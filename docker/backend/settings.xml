@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 https://maven.apache.org/xsd/settings-1.0.0.xsd">
+  <!--
+    国内镜像加速配置：
+    除 jitpack.io 外，其余依赖均从阿里云镜像拉取（直连、速度快）
+  -->
+  <mirrors>
+    <mirror>
+      <id>aliyun-public</id>
+      <name>Aliyun Maven Public Mirror</name>
+      <url>https://maven.aliyun.com/repository/public</url>
+      <mirrorOf>*,!jitpack.io</mirrorOf>
+    </mirror>
+  </mirrors>
+</settings>
