@@ -187,6 +187,11 @@ cd deploy && docker compose up -d --build
 | [新手教程系列](docs/agentx-course/lesson-01-agentx-overview.md) | 从零开始学习本项目 |
 | [开发部署指南](deploy/README.md) | 开发者环境配置 |
 
+## 👥 Contributors
+
+- [KumiKo2007](https://github.com/KumiKo2007) — 项目所有者与开发者
+- Claude — 本项目 AI 协作开发者(深色主题、品牌设计、代码优化)
+
 ## 📄 License
 
 本项目基于 [MIT License](LICENSE) 开源。
