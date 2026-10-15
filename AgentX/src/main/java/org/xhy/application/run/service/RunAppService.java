@@ -55,8 +55,8 @@ public class RunAppService {
     /** 列出当前使用者在一个会话内的所有运行。 */
     public List<RunDTO> list(String sessionId, String userId) {
         sessions.getSession(sessionId, userId);
-        return store.listOwnedBySession(sessionId, userId).stream()
-                .map(run -> RunAssembler.toDTO(run, List.of())).toList();
+        return store.listOwnedBySession(sessionId, userId).stream().map(run -> RunAssembler.toDTO(run, List.of()))
+                .toList();
     }
 
     /** 读取当前使用者可访问的运行及步骤。 */

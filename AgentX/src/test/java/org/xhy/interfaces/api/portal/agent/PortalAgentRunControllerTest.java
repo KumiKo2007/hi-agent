@@ -81,8 +81,8 @@ class PortalAgentRunControllerTest {
 
         // 新控制器与应用服务重新读取同一持久存储，等价于浏览器刷新后的读取路径。
         MockMvc readApi = api(sessions, persistedStore);
-        JsonNode list = data(readApi.perform(get("/agents/sessions/session-1/runs")).andReturn()
-                .getResponse().getContentAsString(StandardCharsets.UTF_8));
+        JsonNode list = data(readApi.perform(get("/agents/sessions/session-1/runs")).andReturn().getResponse()
+                .getContentAsString(StandardCharsets.UTF_8));
         assertEquals(2, list.size());
 
         JsonNode firstDetail = data(readApi.perform(get("/agents/runs/" + first.path("id").asText())).andReturn()
@@ -209,8 +209,9 @@ class PortalAgentRunControllerTest {
 
     private JsonNode postGoal(MockMvc api, String goal) throws Exception {
         String body = json.writeValueAsString(Map.of("goal", goal));
-        String response = api.perform(post("/agents/sessions/session-1/runs").contentType("application/json")
-                .content(body)).andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
+        String response = api
+                .perform(post("/agents/sessions/session-1/runs").contentType("application/json").content(body))
+                .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
         return data(response);
     }
 

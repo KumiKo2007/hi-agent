@@ -36,8 +36,8 @@ public class MyBatisRunStore implements RunStore {
 
     @Override
     public RunEntity findOwned(String runId, String userId) {
-        return runs.selectOne(Wrappers.<RunEntity>lambdaQuery().eq(RunEntity::getId, runId)
-                .eq(RunEntity::getUserId, userId));
+        return runs.selectOne(
+                Wrappers.<RunEntity>lambdaQuery().eq(RunEntity::getId, runId).eq(RunEntity::getUserId, userId));
     }
 
     @Override

@@ -16,24 +16,64 @@ public class RunDTO {
     private LocalDateTime updatedAt;
     private List<RunStepDTO> steps;
 
-    public String getId() { return id; }
-    public void setId(String id) { this.id = id; }
-    public String getSessionId() { return sessionId; }
-    public void setSessionId(String sessionId) { this.sessionId = sessionId; }
-    public String getAgentId() { return agentId; }
-    public void setAgentId(String agentId) { this.agentId = agentId; }
-    public String getGoal() { return goal; }
-    public void setGoal(String goal) { this.goal = goal; }
-    public String getStatus() { return status; }
-    public void setStatus(String status) { this.status = status; }
-    public String getResult() { return result; }
-    public void setResult(String result) { this.result = result; }
-    public String getErrorMessage() { return errorMessage; }
-    public void setErrorMessage(String errorMessage) { this.errorMessage = errorMessage; }
-    public LocalDateTime getCreatedAt() { return createdAt; }
-    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
-    public LocalDateTime getUpdatedAt() { return updatedAt; }
-    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
-    public List<RunStepDTO> getSteps() { return steps; }
-    public void setSteps(List<RunStepDTO> steps) { this.steps = steps; }
+    public String getId() {
+        return id;
+    }
+    public void setId(String id) {
+        this.id = id;
+    }
+    public String getSessionId() {
+        return sessionId;
+    }
+    public void setSessionId(String sessionId) {
+        this.sessionId = sessionId;
+    }
+    public String getAgentId() {
+        return agentId;
+    }
+    public void setAgentId(String agentId) {
+        this.agentId = agentId;
+    }
+    public String getGoal() {
+        return goal;
+    }
+    public void setGoal(String goal) {
+        this.goal = goal;
+    }
+    public String getStatus() {
+        return status;
+    }
+    public void setStatus(String status) {
+        this.status = status;
+    }
+    public String getResult() {
+        return result;
+    }
+    public void setResult(String result) {
+        this.result = result;
+    }
+    public String getErrorMessage() {
+        return errorMessage;
+    }
+    public void setErrorMessage(String errorMessage) {
+        this.errorMessage = errorMessage;
+    }
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
+    public LocalDateTime getUpdatedAt() {
+        return updatedAt;
+    }
+    public void setUpdatedAt(LocalDateTime updatedAt) {
+        this.updatedAt = updatedAt;
+    }
+    public List<RunStepDTO> getSteps() {
+        return steps;
+    }
+    public void setSteps(List<RunStepDTO> steps) {
+        this.steps = steps;
+    }
 }
