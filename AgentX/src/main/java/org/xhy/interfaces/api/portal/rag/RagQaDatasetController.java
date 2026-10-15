@@ -166,4 +166,26 @@ public class RagQaDatasetController {
         List<FileProcessProgressDTO> progressList = ragQaDatasetAppService.getDatasetFilesProgress(datasetId, userId);
         return Result.success(progressList);
     }
+
+    /** 查询当前资料的处理状态与最近可检索版本。 */
+    @GetMapping("/{datasetId}/readiness")
+    public Result<KnowledgeReadinessDTO> getKnowledgeReadiness(@PathVariable String datasetId) {
+        String userId = UserContext.getCurrentUserId();
+        return Result.success(ragQaDatasetAppService.getKnowledgeReadiness(datasetId, userId));
+    }
+
+    /** 全部资料就绪后创建可检索快照。 */
+    @PostMapping("/{datasetId}/ready-versions")
+    public Result<RagVersionDTO> createReadyKnowledgeVersion(@PathVariable String datasetId) {
+        String userId = UserContext.getCurrentUserId();
+        return Result.success(ragQaDatasetAppService.createReadyKnowledgeVersion(datasetId, userId));
+    }
+
+    /** 按固定版本标识访问可检索快照。 */
+    @GetMapping("/{datasetId}/ready-versions/{versionId}")
+    public Result<RagContentPreviewDTO> getReadyKnowledgeVersion(@PathVariable String datasetId,
+            @PathVariable String versionId) {
+        String userId = UserContext.getCurrentUserId();
+        return Result.success(ragQaDatasetAppService.getReadyKnowledgeVersion(datasetId, versionId, userId));
+    }
 }

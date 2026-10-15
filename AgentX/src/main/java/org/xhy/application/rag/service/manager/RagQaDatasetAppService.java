@@ -15,6 +15,7 @@ import org.slf4j.LoggerFactory;
 import org.xhy.application.rag.assembler.FileDetailAssembler;
 import org.xhy.application.rag.assembler.FileProcessProgressAssembler;
 import org.xhy.application.rag.assembler.RagQaDatasetAssembler;
+import org.xhy.application.rag.assembler.RagVersionAssembler;
 import org.xhy.domain.rag.model.UserRagEntity;
 import org.xhy.application.rag.dto.*;
 import org.xhy.application.rag.request.PublishRagRequest;
@@ -44,6 +45,7 @@ import org.xhy.infrastructure.rag.service.UserModelConfigResolver;
 
 import java.util.List;
 import java.util.ArrayList;
+import java.util.Objects;
 
 /** RAG数据集应用服务
  * @author shilong.zang
@@ -411,8 +413,8 @@ public class RagQaDatasetAppService {
 
         } catch (Exception e) {
             log.error("Failed to auto-start preprocessing for file: {}", fileId, e);
-            // 如果自动启动失败，重置状态
-            fileDetailDomainService.resetFileProcessing(fileId, userId);
+            // 记录启动失败，避免上传后一直显示为待处理。
+            fileDetailDomainService.failFilePreprocessingStart(fileId, userId);
         }
     }
 
@@ -487,6 +489,8 @@ public class RagQaDatasetAppService {
             RagDocMessage ocrMessage = new RagDocMessage();
             ocrMessage.setFileId(request.getFileId());
             ocrMessage.setPageSize(fileEntity.getFilePageSize());
+            ocrMessage.setUserId(userId);
+            ocrMessage.setOcrModelConfig(userModelConfigResolver.getUserOcrModelConfig(userId));
 
             MessageEnvelope<RagDocMessage> envelope = MessageEnvelope.builder(ocrMessage)
                     .addEventType(EventType.DOC_REFRESH_ORG).description("文件OCR预处理任务").build();
@@ -516,6 +520,8 @@ public class RagQaDatasetAppService {
                 storageMessage.setContent(documentUnit.getContent());
                 storageMessage.setVector(true);
                 storageMessage.setDatasetId(request.getDatasetId()); // 设置数据集ID
+                storageMessage.setUserId(userId);
+                storageMessage.setEmbeddingModelConfig(userModelConfigResolver.getUserEmbeddingModelConfig(userId));
 
                 MessageEnvelope<RagDocSyncStorageMessage> env = MessageEnvelope.builder(storageMessage)
                         .addEventType(EventType.DOC_SYNC_RAG).description("文件向量化处理任务 - 页面 " + documentUnit.getPage())
@@ -590,6 +596,8 @@ public class RagQaDatasetAppService {
             RagDocMessage ocrMessage = new RagDocMessage();
             ocrMessage.setFileId(request.getFileId());
             ocrMessage.setPageSize(fileEntity.getFilePageSize());
+            ocrMessage.setUserId(userId);
+            ocrMessage.setOcrModelConfig(userModelConfigResolver.getUserOcrModelConfig(userId));
 
             MessageEnvelope<RagDocMessage> envelope = MessageEnvelope.builder(ocrMessage)
                     .addEventType(EventType.DOC_REFRESH_ORG).description("文件强制重新OCR预处理任务").build();
@@ -634,6 +642,8 @@ public class RagQaDatasetAppService {
                 storageMessage.setContent(documentUnit.getContent());
                 storageMessage.setVector(true);
                 storageMessage.setDatasetId(request.getDatasetId());
+                storageMessage.setUserId(userId);
+                storageMessage.setEmbeddingModelConfig(userModelConfigResolver.getUserEmbeddingModelConfig(userId));
 
                 MessageEnvelope<RagDocSyncStorageMessage> env = MessageEnvelope.builder(storageMessage)
                         .addEventType(EventType.DOC_SYNC_RAG)
@@ -691,5 +701,64 @@ public class RagQaDatasetAppService {
 
         List<FileDetailEntity> entities = fileDetailDomainService.listAllFilesByDataset(datasetId, userId);
         return FileProcessProgressAssembler.toDTOs(entities);
+    }
+
+    /** 返回资料处理状态和最近一次已确认的可检索版本。 */
+    public KnowledgeReadinessDTO getKnowledgeReadiness(String datasetId, String userId) {
+        ragQaDatasetDomainService.checkDatasetExists(datasetId, userId);
+        List<FileDetailEntity> files = fileDetailDomainService.listAllFilesByDataset(datasetId, userId);
+        KnowledgeReadinessDTO readiness = new KnowledgeReadinessDTO();
+        readiness.setDatasetId(datasetId);
+        readiness.setFileCount(files.size());
+        int readyCount = 0;
+        int failedCount = 0;
+        for (FileDetailEntity file : files) {
+            FileProcessingStatusEnum status = FileProcessingStatusEnum.fromCode(file.getProcessingStatus());
+            if (status == FileProcessingStatusEnum.COMPLETED) {
+                readyCount++;
+            } else if (status != null && status.isFailed()) {
+                failedCount++;
+                if (readiness.getFailureReason() == null) {
+                    readiness.setFailureReason(FileProcessProgressAssembler.toDTO(file).getFailureReason());
+                }
+            }
+        }
+        readiness.setReadyFileCount(readyCount);
+        readiness.setFailedFileCount(failedCount);
+        readiness.setStatus(files.isEmpty()
+                ? "EMPTY"
+                : failedCount > 0 ? "FAILED" : readyCount == files.size() ? "READY" : "PROCESSING");
+
+        RagVersionEntity latest = ragVersionDomainService.findLatestReadyVersion(datasetId, userId);
+        if (latest != null) {
+            readiness.setLatestReadyVersionId(latest.getId());
+            readiness.setLatestReadyVersionNumber(latest.getVersion());
+        }
+        return readiness;
+    }
+
+    /** 所有文件完成索引后，创建不可变的可检索知识版本。 */
+    @Transactional(transactionManager = "transactionManager")
+    public RagVersionDTO createReadyKnowledgeVersion(String datasetId, String userId) {
+        KnowledgeReadinessDTO readiness = getKnowledgeReadiness(datasetId, userId);
+        if (!Objects.equals("READY", readiness.getStatus())) {
+            throw new BusinessException(
+                    readiness.getFailureReason() != null ? readiness.getFailureReason() : "知识库资料尚未全部处理完成，不能创建可检索版本");
+        }
+        String versionNumber = "1.0." + System.currentTimeMillis();
+        RagVersionEntity version = ragVersionDomainService.createReadyRagVersionSnapshot(datasetId, versionNumber,
+                userId);
+        return RagVersionAssembler.toDTO(version);
+    }
+
+    /** 使用稳定版本 ID 读取快照内容，且只允许拥有者访问已就绪版本。 */
+    public RagContentPreviewDTO getReadyKnowledgeVersion(String datasetId, String versionId, String userId) {
+        ragQaDatasetDomainService.checkDatasetExists(datasetId, userId);
+        RagVersionEntity version = ragVersionDomainService.getRagVersion(versionId);
+        if (!Objects.equals(version.getOriginalRagId(), datasetId) || !Objects.equals(version.getUserId(), userId)
+                || !Boolean.TRUE.equals(version.getSearchReady())) {
+            throw new BusinessException("可检索知识版本不存在或无访问权限");
+        }
+        return ragVersionDomainService.getRagContentPreview(versionId);
     }
 }

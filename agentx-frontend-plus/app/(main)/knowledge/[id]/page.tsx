@@ -68,6 +68,9 @@ import {
   deleteFileWithToast,
   processFileWithToast,
   getDatasetFilesProgressWithToast,
+  getKnowledgeReadiness,
+  createReadyKnowledgeVersion,
+  getReadyKnowledgeVersion,
   ragSearchWithToast,
 } from "@/lib/rag-dataset-service"
 import type { 
@@ -75,6 +78,8 @@ import type {
   FileDetail, 
   PageResponse,
   FileProcessProgressDTO,
+  KnowledgeReadiness,
+  ReadyKnowledgePreview,
   ProcessType,
   DocumentUnitDTO 
 } from "@/types/rag-dataset"
@@ -82,6 +87,7 @@ import { FileInitializeStatus, FileEmbeddingStatus } from "@/types/rag-dataset"
 import { getFileStatusConfig as getFileStatusInfo } from "@/lib/file-status-utils"
 import { RagChatDialog } from "@/components/knowledge/RagChatDialog"
 import { DocumentUnitsDialog } from "@/components/knowledge/DocumentUnitsDialog"
+import { KnowledgeReadinessPanel } from "@/components/knowledge/knowledge-readiness-panel"
 
 export default function DatasetDetailPage() {
   const params = useParams()
@@ -101,6 +107,11 @@ export default function DatasetDetailPage() {
   
   // 新增状态：文件处理进度
   const [filesProgress, setFilesProgress] = useState<FileProcessProgressDTO[]>([])
+  const [knowledgeReadiness, setKnowledgeReadiness] = useState<KnowledgeReadiness | null>(null)
+  const [isCreatingReadyVersion, setIsCreatingReadyVersion] = useState(false)
+  const [readyVersionPreview, setReadyVersionPreview] = useState<ReadyKnowledgePreview | null>(null)
+  const [isLoadingReadyVersion, setIsLoadingReadyVersion] = useState(false)
+  const [showReadyVersionPreview, setShowReadyVersionPreview] = useState(false)
   const [isProcessing, setIsProcessing] = useState<{ [fileId: string]: boolean }>({})
   
   // 新增状态：RAG搜索
@@ -154,8 +165,9 @@ export default function DatasetDetailPage() {
 
     const interval = setInterval(() => {
       // 只有当有文件正在处理时才刷新进度
-      const hasProcessingFiles = filesProgress.some(p => 
-        p.processProgress !== undefined && p.processProgress < 100
+      const hasProcessingFiles = filesProgress.some(p =>
+        p.processingStatusEnum === "UPLOADED" || p.processingStatusEnum === "OCR_PROCESSING" ||
+        p.processingStatusEnum === "OCR_COMPLETED" || p.processingStatusEnum === "EMBEDDING_PROCESSING"
       )
       
       if (hasProcessingFiles || Object.keys(isProcessing).some(key => isProcessing[key])) {
@@ -239,6 +251,7 @@ export default function DatasetDetailPage() {
           // 重新加载文件列表和数据集信息
           loadFiles(pageData.current, debouncedQuery)
           loadDatasetDetail()
+          loadFilesProgress()
         }
       }
     } catch (error) {
@@ -357,7 +370,9 @@ export default function DatasetDetailPage() {
   // 加载文件处理进度
   const loadFilesProgress = async () => {
     try {
-      const response = await getDatasetFilesProgressWithToast(datasetId)
+      const [response, readinessResponse] = await Promise.all([
+        getDatasetFilesProgressWithToast(datasetId), getKnowledgeReadiness(datasetId),
+      ])
       if (response.code === 200) {
         // 避免不必要的状态更新
         const newProgress = response.data
@@ -368,8 +383,46 @@ export default function DatasetDetailPage() {
  
         }
       }
+      if (readinessResponse.code === 200) {
+        setKnowledgeReadiness(readinessResponse.data)
+      }
     } catch (error) {
  
+    }
+  }
+
+  const handleCreateReadyVersion = async () => {
+    try {
+      setIsCreatingReadyVersion(true)
+      const response = await createReadyKnowledgeVersion(datasetId)
+      if (response.code !== 200) {
+        toast({ title: "确认版本失败", description: response.message, variant: "destructive" })
+        return
+      }
+      await loadFilesProgress()
+      toast({ title: "可检索版本已创建", description: `版本 ID：${response.data.id}` })
+    } catch (error) {
+      toast({ title: "确认版本失败", description: error instanceof Error ? error.message : "请稍后重试", variant: "destructive" })
+    } finally {
+      setIsCreatingReadyVersion(false)
+    }
+  }
+
+  const handleOpenReadyVersion = async (versionId: string) => {
+    setShowReadyVersionPreview(true)
+    setIsLoadingReadyVersion(true)
+    setReadyVersionPreview(null)
+    try {
+      const response = await getReadyKnowledgeVersion(datasetId, versionId)
+      if (response.code !== 200) {
+        throw new Error(response.message)
+      }
+      setReadyVersionPreview(response.data)
+    } catch (error) {
+      setShowReadyVersionPreview(false)
+      toast({ title: "读取版本失败", description: error instanceof Error ? error.message : "请稍后重试", variant: "destructive" })
+    } finally {
+      setIsLoadingReadyVersion(false)
     }
   }
 
@@ -502,6 +555,7 @@ export default function DatasetDetailPage() {
           </div>
         </div>
       </div>
+
     )
   }
 
@@ -542,6 +596,14 @@ export default function DatasetDetailPage() {
           </p>
         </div>
       </div>
+
+      <Card className="mb-6">
+        <CardHeader><CardTitle className="text-lg">资料处理与可检索版本</CardTitle></CardHeader>
+        <CardContent>
+          <KnowledgeReadinessPanel readiness={knowledgeReadiness} creating={isCreatingReadyVersion}
+            onCreateVersion={handleCreateReadyVersion} onOpenVersion={handleOpenReadyVersion} />
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* 数据集信息 */}
@@ -793,6 +855,9 @@ export default function DatasetDetailPage() {
                                       {progressInfo.statusDescription}
                                     </p>
                                   )}
+                                  {progressInfo.failureReason && (
+                                    <p className="text-xs text-destructive" role="alert">{progressInfo.failureReason}</p>
+                                  )}
                                 </div>
                               ) : (
                                 <span className="text-xs text-muted-foreground">-</span>
@@ -975,6 +1040,27 @@ export default function DatasetDetailPage() {
       </Dialog>
 
       {/* 删除文件确认对话框 */}
+      <Dialog open={showReadyVersionPreview} onOpenChange={setShowReadyVersionPreview}>
+        <DialogContent className="max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>可检索知识版本</DialogTitle>
+            <DialogDescription>固定版本标识：{readyVersionPreview?.id || "正在读取..."}</DialogDescription>
+          </DialogHeader>
+          {isLoadingReadyVersion ? <p>正在读取快照...</p> : readyVersionPreview && <div className="space-y-3 text-sm">
+            <p>{readyVersionPreview.files.length} 个文件，{readyVersionPreview.totalDocuments} 条语料</p>
+            <ul className="list-disc pl-5">{readyVersionPreview.files.map(file =>
+              <li key={file.id}>{file.fileName}</li>
+            )}</ul>
+            {readyVersionPreview.sampleDocuments.map(document =>
+              <div key={document.id} className="rounded border p-3">
+                <p className="text-muted-foreground">{document.fileName} · 第 {document.page} 页</p>
+                <p className="whitespace-pre-wrap">{document.content}</p>
+              </div>
+            )}
+          </div>}
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={!!fileToDelete} onOpenChange={(open) => !open && setFileToDelete(null)}>
         <DialogContent>
           <DialogHeader>

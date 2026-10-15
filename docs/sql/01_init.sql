@@ -358,7 +358,8 @@ create table public.file_detail (
                                     current_embedding_page_number integer default 0, -- 当前向量化处理页数
                                     ocr_process_progress numeric(5,2) default 0.00, -- OCR处理进度百分比
                                     embedding_process_progress numeric(5,2) default 0.00, -- 向量化处理进度百分比(0-100)
-                                    processing_status integer default 0 -- 文件处理状态：0-已上传，1-OCR处理中，2-OCR完成，3-向量化处理中，4-处理完成，5-OCR失败，6-向量化失败
+                                    processing_status integer default 0, -- 文件处理状态：0-已上传，1-OCR处理中，2-OCR完成，3-向量化处理中，4-处理完成，5-OCR失败，6-向量化失败
+                                    processing_error character varying(500) -- 可展示给使用者的处理失败原因
 );
 create index idx_file_detail_current_page on file_detail using btree (current_page_number);
 create index idx_file_detail_progress on file_detail using btree (process_progress);
@@ -400,6 +401,7 @@ comment on column public.file_detail.current_embedding_page_number is '当前向
 comment on column public.file_detail.ocr_process_progress is 'OCR处理进度百分比';
 comment on column public.file_detail.embedding_process_progress is '向量化处理进度百分比(0-100)';
 comment on column public.file_detail.processing_status is '文件处理状态：0-已上传，1-OCR处理中，2-OCR完成，3-向量化处理中，4-处理完成，5-OCR失败，6-向量化失败';
+comment on column public.file_detail.processing_error is '可展示给使用者的文件处理失败原因';
 
 create table public.messages (
                                  id character varying(36) primary key not null, -- 消息唯一ID
@@ -623,6 +625,7 @@ create table public.rag_versions (
                                      file_count integer default 0, -- 文件数量
                                      total_size bigint default 0, -- 总大小（字节）
                                      document_count integer default 0, -- 文档单元数量
+                                     search_ready boolean not null default false, -- 已通过全部文件就绪检查的可检索版本
                                      publish_status integer default 1, -- 发布状态 1:审核中, 2:已发布, 3:拒绝, 4:已下架
                                      reject_reason text, -- 审核拒绝原因
                                      review_time timestamp without time zone, -- 审核时间
@@ -645,6 +648,7 @@ comment on column public.rag_versions.original_rag_name is '原始RAG名称（�
 comment on column public.rag_versions.file_count is '文件数量';
 comment on column public.rag_versions.total_size is '总大小（字节）';
 comment on column public.rag_versions.document_count is '文档单元数量';
+comment on column public.rag_versions.search_ready is '通过全部文件就绪检查创建的不可变可检索版本';
 comment on column public.rag_versions.publish_status is '发布状态 1:审核中, 2:已发布, 3:拒绝, 4:已下架';
 comment on column public.rag_versions.reject_reason is '审核拒绝原因';
 comment on column public.rag_versions.review_time is '审核时间';

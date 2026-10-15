@@ -139,6 +139,10 @@ export const API_ENDPOINTS = {
   RAG_PROCESS_FILE: "/rag/datasets/files/process", // 启动文件预处理
   RAG_FILE_PROGRESS: (fileId: string) => `/rag/datasets/files/${fileId}/progress`, // 获取文件处理进度
   RAG_DATASET_FILES_PROGRESS: (datasetId: string) => `/rag/datasets/${datasetId}/files/progress`, // 获取数据集文件处理进度列表
+  RAG_DATASET_READINESS: (datasetId: string) => `/rag/datasets/${datasetId}/readiness`,
+  RAG_READY_VERSIONS: (datasetId: string) => `/rag/datasets/${datasetId}/ready-versions`,
+  RAG_READY_VERSION_DETAIL: (datasetId: string, versionId: string) =>
+    `/rag/datasets/${datasetId}/ready-versions/${versionId}`,
   RAG_SEARCH: "/rag/search", // RAG搜索文档
   RAG_SEARCH_BY_USER_RAG: (userRagId: string) => `/rag/search/user-rag/${userRagId}`, // 基于已安装知识库的RAG搜索
   

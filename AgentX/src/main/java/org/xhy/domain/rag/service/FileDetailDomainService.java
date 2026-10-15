@@ -248,9 +248,15 @@ public class FileDetailDomainService {
      * @param userId 用户ID
      * @return 是否成功设置失败状态 */
     public boolean failFileOcrProcessing(String fileId, String userId) {
+        return failFileOcrProcessing(fileId, userId, "文档识别失败，请检查文件内容或模型配置后重试");
+    }
+
+    /** 记录 OCR 失败及可安全展示的原因。 */
+    public boolean failFileOcrProcessing(String fileId, String userId, String reason) {
         FileDetailEntity fileEntity = getFile(fileId, userId);
         boolean success = stateMachineService.handleEvent(fileEntity, FileProcessingEventEnum.FAIL_OCR_PROCESSING);
         if (success) {
+            fileEntity.setProcessingError(reason);
             updateFile(fileEntity);
         }
         return success;
@@ -289,10 +295,16 @@ public class FileDetailDomainService {
      * @param userId 用户ID
      * @return 是否成功设置失败状态 */
     public boolean failFileEmbeddingProcessing(String fileId, String userId) {
+        return failFileEmbeddingProcessing(fileId, userId, "向量化失败，请检查嵌入模型配置后重试");
+    }
+
+    /** 记录向量化失败及可安全展示的原因。 */
+    public boolean failFileEmbeddingProcessing(String fileId, String userId, String reason) {
         FileDetailEntity fileEntity = getFile(fileId, userId);
         boolean success = stateMachineService.handleEvent(fileEntity,
                 FileProcessingEventEnum.FAIL_EMBEDDING_PROCESSING);
         if (success) {
+            fileEntity.setProcessingError(reason);
             updateFile(fileEntity);
         }
         return success;
@@ -307,8 +319,31 @@ public class FileDetailDomainService {
         boolean success = stateMachineService.handleEvent(fileEntity, FileProcessingEventEnum.RESET_PROCESSING);
         if (success) {
             updateFile(fileEntity);
+            clearProcessingError(fileId, userId);
         }
         return success;
+    }
+
+    /** 预处理任务尚未开始时记录启动失败。 */
+    public void failFilePreprocessingStart(String fileId, String userId) {
+        fileDetailRepository.update(Wrappers.<FileDetailEntity>lambdaUpdate().eq(FileDetailEntity::getId, fileId)
+                .eq(FileDetailEntity::getUserId, userId)
+                .set(FileDetailEntity::getProcessingStatus, FileProcessingStatusEnum.OCR_FAILED.getCode())
+                .set(FileDetailEntity::getProcessingError, "无法启动资料处理，请检查模型配置后重试"));
+    }
+
+    /** OCR 未产生可向量化语料时记录明确的失败状态。 */
+    public void failFileEmbeddingStart(String fileId, String userId) {
+        fileDetailRepository.update(Wrappers.<FileDetailEntity>lambdaUpdate().eq(FileDetailEntity::getId, fileId)
+                .eq(FileDetailEntity::getUserId, userId)
+                .set(FileDetailEntity::getProcessingStatus, FileProcessingStatusEnum.EMBEDDING_FAILED.getCode())
+                .set(FileDetailEntity::getProcessingError, "文档没有可检索内容，请检查文件内容后重试"));
+    }
+
+    /** 清除上一次失败原因。 */
+    private void clearProcessingError(String fileId, String userId) {
+        fileDetailRepository.update(Wrappers.<FileDetailEntity>lambdaUpdate().eq(FileDetailEntity::getId, fileId)
+                .eq(FileDetailEntity::getUserId, userId).set(FileDetailEntity::getProcessingError, null));
     }
 
     /** 根据文件ID获取文件详情

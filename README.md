@@ -179,6 +179,7 @@ cd deploy && docker compose up -d --build
 ## 📖 更多文档
 
 - [对话回归基线与本地测试命令](docs/testing-regression-baseline.md)
+- [知识库资料处理与可检索版本](docs/knowledge-readiness.md)
 
 | 文档 | 说明 |
 |------|------|

@@ -8,6 +8,8 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.xhy.domain.rag.constant.FileProcessingStatusEnum;
 import org.xhy.domain.rag.constant.RagPublishStatus;
 import org.xhy.domain.rag.model.DocumentUnitEntity;
 import org.xhy.domain.rag.model.FileDetailEntity;
@@ -94,6 +96,42 @@ public class RagVersionDomainService {
         return ragVersion;
     }
 
+    /** 验证全部资料已完成索引后创建可检索的不可变快照。 */
+    @Transactional(transactionManager = "transactionManager")
+    public RagVersionEntity createReadyRagVersionSnapshot(String ragId, String version, String userId) {
+        List<FileDetailEntity> files = fileDetailRepository.selectList(Wrappers.<FileDetailEntity>lambdaQuery()
+                .eq(FileDetailEntity::getDataSetId, ragId).eq(FileDetailEntity::getUserId, userId));
+        if (files.isEmpty() || files.stream()
+                .anyMatch(file -> !FileProcessingStatusEnum.COMPLETED.getCode().equals(file.getProcessingStatus()))) {
+            throw new BusinessException("知识库资料尚未全部处理完成，不能创建可检索版本");
+        }
+
+        RagVersionEntity snapshot = createRagVersionSnapshot(ragId, version, "资料处理完成，创建可检索版本", userId);
+        RagVersionEntity created = getRagVersion(snapshot.getId());
+        List<RagVersionFileEntity> snapshotFiles = ragVersionFileRepository.selectList(Wrappers
+                .<RagVersionFileEntity>lambdaQuery().eq(RagVersionFileEntity::getRagVersionId, created.getId()));
+        if (snapshotFiles.size() != files.size()
+                || snapshotFiles.stream()
+                        .anyMatch(file -> !Integer.valueOf(2).equals(file.getProcessStatus())
+                                || !Integer.valueOf(2).equals(file.getEmbeddingStatus()))
+                || created.getDocumentCount() == null || created.getDocumentCount() == 0) {
+            throw new BusinessException("资料处理状态已变化或没有可检索内容，请稍后重试");
+        }
+        created.setSearchReady(true);
+        ragVersionRepository.update(Wrappers.<RagVersionEntity>lambdaUpdate()
+                .eq(RagVersionEntity::getId, created.getId()).set(RagVersionEntity::getSearchReady, true));
+        return created;
+    }
+
+    /** 查找使用者已确认的最新可检索版本。 */
+    public RagVersionEntity findLatestReadyVersion(String ragId, String userId) {
+        List<RagVersionEntity> versions = ragVersionRepository.selectList(Wrappers.<RagVersionEntity>lambdaQuery()
+                .eq(RagVersionEntity::getOriginalRagId, ragId).eq(RagVersionEntity::getUserId, userId)
+                .eq(RagVersionEntity::getSearchReady, true).orderByDesc(RagVersionEntity::getCreatedAt)
+                .orderByDesc(RagVersionEntity::getId).last("LIMIT 1"));
+        return versions.isEmpty() ? null : versions.get(0);
+    }
+
     /** 复制文件和文档数据到版本快照
      * 
      * @param ragId 原始RAG数据集ID
@@ -105,6 +143,10 @@ public class RagVersionDomainService {
         List<FileDetailEntity> originalFiles = fileDetailRepository.selectList(fileWrapper);
 
         for (FileDetailEntity originalFile : originalFiles) {
+            // 处理中或失败的资料不能成为版本中的可检索依据。
+            if (!FileProcessingStatusEnum.COMPLETED.getCode().equals(originalFile.getProcessingStatus())) {
+                continue;
+            }
             // 创建文件快照
             RagVersionFileEntity versionFile = new RagVersionFileEntity();
             versionFile.setRagVersionId(ragVersionId);
