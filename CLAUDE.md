@@ -1130,3 +1130,17 @@ repository.checkedUpdate(entity, updateWrapper);
 - Always handle loading and error states in UI
 - Run Spotless formatting before every commit
 - Check both success and failure scenarios during testing
+
+## Agent skills
+
+### Issue tracker
+
+GitHub Issues in KumiKo2007/hi-agent. See docs/agents/issue-tracker.md.
+
+### Triage labels
+
+The five default triage roles use their canonical names. See docs/agents/triage-labels.md.
+
+### Domain docs
+
+Single-context glossary and ADRs at the repo root. See docs/agents/domain.md.
