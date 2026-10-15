@@ -6,7 +6,7 @@ hi Agent 是一个基于大模型 (LLM) 和多能力平台 (MCP) 的智能 Agent
 
 - **前端**:深色主题 + 极光渐变品牌标识,基于 Next.js 15
 - **后端**:Spring Boot (Java 17)
-- **开源协议**:MIT
+- **开源协议**: MIT
 
 ---
 
@@ -196,4 +196,6 @@ cd deploy && docker compose up -d --build
 
 ## 📄 License
 
-本项目基于 [MIT License](LICENSE) 开源。
+项目自有源码依据 [MIT License](LICENSE) 发布。Copyright (c) 2026 KumiKo2007。
+
+Maven Wrapper 等第三方文件及外部依赖保留各自的许可证。仓库内的第三方例外和审计命令见 [第三方许可说明](THIRD_PARTY_LICENSES.md)。
