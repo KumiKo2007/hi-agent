@@ -8,6 +8,7 @@
     "build": "next build",
     "start": "next start",
     "test:chat": "vitest run tests/chat-panel.test.tsx",
+    "test:runs": "vitest run tests/run-panel.test.tsx",
     "lint": "node scripts/check-lint.mjs",
     "lint:strict": "next lint"
   },

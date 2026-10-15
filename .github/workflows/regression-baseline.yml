@@ -19,7 +19,7 @@ jobs:
           cache: maven
       - name: Test existing chat HTTP/SSE flow with deterministic model
         working-directory: AgentX
-        run: ./mvnw -B -ntp -Dtest=PortalChatRegressionTest -DforkedProcessTimeoutInSeconds=60 test
+        run: ./mvnw -B -ntp -Dtest=PortalChatRegressionTest,PortalAgentRunControllerTest -DforkedProcessTimeoutInSeconds=60 test
 
   frontend:
     runs-on: ubuntu-latest
@@ -36,5 +36,6 @@ jobs:
           cache-dependency-path: agentx-frontend-plus/package-lock.json
       - run: npm ci --legacy-peer-deps --include=optional
       - run: npm run test:chat
+      - run: npm run test:runs
       - run: npm run lint
       - run: npm run build

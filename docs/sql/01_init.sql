@@ -1189,4 +1189,38 @@ CREATE TABLE IF NOT EXISTS public.memory_items (
     created_at timestamp without time zone default CURRENT_TIMESTAMP, -- 创建时间
     updated_at timestamp without time zone default CURRENT_TIMESTAMP, -- 更新时间
     deleted_at timestamp without time zone -- 删除时间（软删除）
-    )
+    );
+
+
+-- 每个目标独立的持久运行及步骤，供运行接口与控制台读取。
+CREATE TABLE IF NOT EXISTS public.agent_runs (
+    id VARCHAR(36) PRIMARY KEY,
+    user_id VARCHAR(64) NOT NULL,
+    session_id VARCHAR(64) NOT NULL,
+    agent_id VARCHAR(64) NOT NULL,
+    goal TEXT NOT NULL,
+    status VARCHAR(32) NOT NULL,
+    result TEXT,
+    error_message TEXT,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_agent_runs_owner_session_time
+    ON public.agent_runs (user_id, session_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS public.agent_run_steps (
+    id VARCHAR(36) PRIMARY KEY,
+    run_id VARCHAR(36) NOT NULL,
+    sequence_no INTEGER NOT NULL,
+    kind VARCHAR(64) NOT NULL,
+    status VARCHAR(32) NOT NULL,
+    result TEXT,
+    error_message TEXT,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP,
+    UNIQUE (run_id, sequence_no)
+);
+CREATE INDEX IF NOT EXISTS idx_agent_run_steps_run_sequence
+    ON public.agent_run_steps (run_id, sequence_no);
