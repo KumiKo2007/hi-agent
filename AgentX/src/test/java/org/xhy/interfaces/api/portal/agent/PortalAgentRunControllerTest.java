@@ -17,6 +17,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.xhy.application.run.service.RunAppService;
 import org.xhy.application.run.service.AgentRunModel;
+import org.xhy.application.run.service.RunWorker;
 import org.xhy.domain.agent.model.AgentEntity;
 import org.xhy.domain.agent.model.AgentWorkspaceEntity;
 import org.xhy.domain.agent.model.LLMModelConfig;
@@ -128,9 +129,10 @@ class PortalAgentRunControllerTest {
         session.setAgentId("agent-1");
         when(sessions.getSession("session-1", "owner")).thenReturn(session);
         InMemoryStore store = new InMemoryStore();
-        RunAppService service = new RunAppService(sessions, store, run -> {
+        RunWorker worker = new RunWorker(store, run -> {
             throw new IllegalStateException("secret-provider-key");
         });
+        RunAppService service = new RunAppService(sessions, store, worker::process);
         MockMvc api = MockMvcBuilders.standaloneSetup(new PortalAgentRunController(service))
                 .setControllerAdvice(new GlobalExceptionHandler()).build();
         UserContext.setCurrentUserId("owner");
@@ -186,8 +188,9 @@ class PortalAgentRunControllerTest {
         LLMServiceFactory models = mock(LLMServiceFactory.class);
         when(models.getStrandClient(provider, model)).thenReturn(chatModel);
 
-        RunAppService service = new RunAppService(sessions, new InMemoryStore(),
-                new AgentRunModel(agents, workspaces, llms, models));
+        InMemoryStore store = new InMemoryStore();
+        RunWorker worker = new RunWorker(store, new AgentRunModel(agents, workspaces, llms, models));
+        RunAppService service = new RunAppService(sessions, store, worker::process);
         MockMvc api = MockMvcBuilders.standaloneSetup(new PortalAgentRunController(service)).build();
         UserContext.setCurrentUserId("owner");
 
@@ -202,7 +205,8 @@ class PortalAgentRunControllerTest {
     }
 
     private MockMvc api(SessionDomainService sessions, InMemoryStore store) {
-        RunAppService service = new RunAppService(sessions, store, run -> "回答：" + run.getGoal());
+        RunWorker worker = new RunWorker(store, run -> "回答：" + run.getGoal());
+        RunAppService service = new RunAppService(sessions, store, worker::process);
         return MockMvcBuilders.standaloneSetup(new PortalAgentRunController(service))
                 .setControllerAdvice(new GlobalExceptionHandler()).build();
     }
@@ -212,7 +216,9 @@ class PortalAgentRunControllerTest {
         String response = api
                 .perform(post("/agents/sessions/session-1/runs").contentType("application/json").content(body))
                 .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
-        return data(response);
+        JsonNode created = data(response);
+        return data(api.perform(get("/agents/runs/" + created.path("id").asText())).andReturn().getResponse()
+                .getContentAsString(StandardCharsets.UTF_8));
     }
 
     private JsonNode data(String response) throws Exception {
@@ -232,22 +238,56 @@ class PortalAgentRunControllerTest {
         }
 
         @Override
-        public void updateRunAndStep(RunEntity run, RunStepEntity step) {
-            runs.put(run.getId(), copy(run));
-            List<RunStepEntity> runSteps = steps.get(step.getRunId());
-            for (int index = 0; index < runSteps.size(); index++) {
-                if (step.getId().equals(runSteps.get(index).getId())) {
-                    runSteps.set(index, copy(step));
-                    return;
-                }
-            }
-            throw new IllegalArgumentException("步骤不存在");
-        }
-
-        @Override
         public RunEntity findOwned(String runId, String userId) {
             RunEntity run = runs.get(runId);
             return run != null && userId.equals(run.getUserId()) ? copy(run) : null;
+        }
+
+        @Override
+        public RunEntity findForWorker(String runId) {
+            return copy(runs.get(runId));
+        }
+
+        @Override
+        public synchronized boolean claim(String runId, String token, int leaseSeconds) {
+            RunEntity run = runs.get(runId);
+            if (run == null || !"PENDING".equals(run.getStatus())) {
+                return false;
+            }
+            run.start();
+            steps.get(runId).get(0).start();
+            return true;
+        }
+
+        @Override
+        public boolean renewLease(String runId, String token, int leaseSeconds) {
+            return "RUNNING".equals(runs.get(runId).getStatus());
+        }
+
+        @Override
+        public boolean complete(String runId, String token, String answer) {
+            if (!"RUNNING".equals(runs.get(runId).getStatus())) {
+                return false;
+            }
+            runs.get(runId).complete(answer);
+            steps.get(runId).get(0).complete(answer);
+            return true;
+        }
+
+        @Override
+        public boolean fail(String runId, String token, String reason) {
+            if (!"RUNNING".equals(runs.get(runId).getStatus())) {
+                return false;
+            }
+            runs.get(runId).fail(reason);
+            steps.get(runId).get(0).fail(reason);
+            return true;
+        }
+
+        @Override
+        public List<String> recoverableRunIds(int limit) {
+            return runs.values().stream().filter(run -> "PENDING".equals(run.getStatus())).limit(limit)
+                    .map(RunEntity::getId).toList();
         }
 
         @Override

@@ -6,6 +6,7 @@
 
 ```bash
 psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f AgentX/src/main/resources/db/migration/V20261015001__create_agent_runs.sql
+psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f AgentX/src/main/resources/db/migration/V20261015004__run_delivery_lease.sql
 ```
 
 仓库目前未自动执行 `db/migration` 目录中的 SQL，因此升级已有数据库时必须显式执行上述命令。两张表创建后，可在 Web 工作区选中会话，切换到“运行”视图，连续提交两个目标并刷新页面检查列表与详情。公开接口为：
@@ -14,4 +15,6 @@ psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f AgentX/src/main/resources/db/migratio
 - `GET /api/agents/sessions/{sessionId}/runs`，读取会话运行列表。
 - `GET /api/agents/runs/{runId}`，读取运行及步骤详情。
 
-简单目标通过 Agent 工作区配置的模型连接执行。此阶段模型执行是同步的；提交请求结束后返回已完成或失败的状态。后续恢复与工作派发工单将沿用运行记录，增加跨重启继续处理能力。
+提交目标后立即返回 `PENDING`。RabbitMQ 派发运行编号，工作者通过 PostgreSQL 的租约领取工作；启动时和定期扫描会重新派发漏发或租约过期的运行。重复消息不会覆盖已完成结果，浏览器刷新后从 `GET` 接口读取同一个运行。部署时先执行 SQL，再启动使用新版代码的服务。
+
+恢复集成测试使用专用 PostgreSQL 数据库和 RabbitMQ 实例。设置 `RUN_DELIVERY_INTEGRATION=true`，可用 `RUN_TEST_DB_URL` 与 `RUN_TEST_RABBIT_PORT` 指定地址，然后在 `AgentX` 运行 `./mvnw -Dtest=RunPostgresRabbitIntegrationTest test`。测试通过公开运行接口提交目标，经过真实数据库与 RabbitMQ，验证租约过期恢复、重复消息和两个工作者的竞争。

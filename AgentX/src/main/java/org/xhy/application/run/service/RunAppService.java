@@ -1,5 +1,7 @@
 package org.xhy.application.run.service;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.xhy.application.run.assembler.RunAssembler;
 import org.xhy.application.run.dto.RunDTO;
@@ -7,8 +9,8 @@ import org.xhy.domain.conversation.model.SessionEntity;
 import org.xhy.domain.conversation.service.SessionDomainService;
 import org.xhy.domain.run.model.RunEntity;
 import org.xhy.domain.run.model.RunStepEntity;
+import org.xhy.domain.run.repository.RunDispatch;
 import org.xhy.domain.run.repository.RunStore;
-import org.xhy.infrastructure.exception.BusinessException;
 import org.xhy.infrastructure.exception.EntityNotFoundException;
 
 import java.util.List;
@@ -16,39 +18,29 @@ import java.util.List;
 /** 每个目标独立创建和读取一次运行。 */
 @Service
 public class RunAppService {
+    private static final Logger logger = LoggerFactory.getLogger(RunAppService.class);
     private final SessionDomainService sessions;
     private final RunStore store;
-    private final RunModel model;
+    private final RunDispatch dispatch;
 
-    public RunAppService(SessionDomainService sessions, RunStore store, RunModel model) {
+    public RunAppService(SessionDomainService sessions, RunStore store, RunDispatch dispatch) {
         this.sessions = sessions;
         this.store = store;
-        this.model = model;
+        this.dispatch = dispatch;
     }
 
-    /** 创建运行，保存模型步骤，并返回可重新读取的最终状态。 */
+    /** 创建持久运行并派发工作；浏览器可以立即重新读取其状态。 */
     public RunDTO start(String sessionId, String goal, String userId) {
         SessionEntity session = sessions.getSession(sessionId, userId);
         RunEntity run = RunEntity.create(userId, sessionId, session.getAgentId(), goal);
         RunStepEntity step = RunStepEntity.modelCall(run.getId());
         store.createRunWithStep(run, step);
-
-        run.start();
-        step.start();
-        store.updateRunAndStep(run, step);
         try {
-            String answer = model.execute(run);
-            if (answer == null || answer.isBlank()) {
-                throw new BusinessException("模型未返回结果");
-            }
-            run.complete(answer);
-            step.complete(answer);
+            dispatch.dispatch(run.getId());
         } catch (Exception exception) {
-            String reason = exception instanceof BusinessException ? exception.getMessage() : "模型执行失败";
-            run.fail(reason);
-            step.fail(reason);
+            // 扫描器会从 PostgreSQL 中再次找到 PENDING 的运行。
+            logger.warn("运行派发暂不可用，等待数据库扫描恢复：{}", run.getId());
         }
-        store.updateRunAndStep(run, step);
         return RunAssembler.toDTO(run, List.of(step));
     }
 

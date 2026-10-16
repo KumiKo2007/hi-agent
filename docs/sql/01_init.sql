@@ -1206,12 +1206,18 @@ CREATE TABLE IF NOT EXISTS public.agent_runs (
     status VARCHAR(32) NOT NULL,
     result TEXT,
     error_message TEXT,
+    lease_token VARCHAR(36),
+    lease_until TIMESTAMP,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP
 );
 CREATE INDEX IF NOT EXISTS idx_agent_runs_owner_session_time
     ON public.agent_runs (user_id, session_id, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_agent_runs_recovery
+    ON public.agent_runs (status, lease_until, created_at)
+    WHERE deleted_at IS NULL;
 
 CREATE TABLE IF NOT EXISTS public.agent_run_steps (
     id VARCHAR(36) PRIMARY KEY,

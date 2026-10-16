@@ -52,6 +52,31 @@ export function RunPanel({ sessionId }: RunPanelProps) {
     return () => { active = false }
   }, [sessionId])
 
+  useEffect(() => {
+    if (!selectedRun || ["COMPLETED", "FAILED", "CANCELLED"].includes(selectedRun.status)) return
+    const runId = selectedRun.id
+    let active = true
+    let refreshing = false
+    const timer = setInterval(async () => {
+      if (refreshing) return
+      refreshing = true
+      try {
+        const response = await RunService.detail(runId)
+        if (!active || response.code !== 200 || !response.data) return
+        setSelectedRun(current => current?.id === runId ? response.data : current)
+        setRuns(current => current.map(run => run.id === runId ? response.data : run))
+      } catch {
+        // 暂时断线时保留上一次持久状态；下一轮继续读取。
+      } finally {
+        refreshing = false
+      }
+    }, 2000)
+    return () => {
+      active = false
+      clearInterval(timer)
+    }
+  }, [sessionId, selectedRun?.id, selectedRun?.status])
+
   async function selectRun(runId: string) {
     setError(null)
     const response = await RunService.detail(runId)
