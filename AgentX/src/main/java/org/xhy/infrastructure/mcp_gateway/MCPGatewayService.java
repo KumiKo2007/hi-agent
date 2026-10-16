@@ -135,7 +135,7 @@ public class MCPGatewayService {
     public List<ToolDefinition> listTools(String toolName) throws Exception {
         String url = properties.getBaseUrl() + "/" + toolName + "/sse/sse?api_key=" + properties.getApiKey();
         HttpMcpTransport transport = new HttpMcpTransport.Builder().sseUrl(url).timeout(Duration.ofSeconds(10))
-                .logRequests(false).logResponses(true).build();
+                .logRequests(false).logResponses(false).build();
         McpClient client = new DefaultMcpClient.Builder().transport(transport).build();
         try {
             List<ToolSpecification> toolSpecifications = client.listTools();
@@ -160,10 +160,10 @@ public class MCPGatewayService {
         String url = "http://" + containerIp + ":" + containerPort + "/" + toolName + "/sse/sse?api_key="
                 + properties.getApiKey();
 
-        logger.info("从审核容器获取工具列表: {}", url);
+        logger.info("从审核容器获取工具列表: {}:{}", containerIp, containerPort);
 
         HttpMcpTransport transport = new HttpMcpTransport.Builder().sseUrl(url).timeout(Duration.ofSeconds(10))
-                .logRequests(false).logResponses(true).build();
+                .logRequests(false).logResponses(false).build();
         McpClient client = new DefaultMcpClient.Builder().transport(transport).build();
         try {
             List<ToolSpecification> toolSpecifications = client.listTools();

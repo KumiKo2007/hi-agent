@@ -264,6 +264,8 @@ public class ConversationAppService {
         if (!agent.getUserId().equals(userId)) {
             AgentVersionEntity latestAgentVersion = agentDomainService.getLatestAgentVersion(agentId);
             BeanUtils.copyProperties(latestAgentVersion, agent);
+            // 版本内容可以替换配置，但动作允许列表始终归属原 Agent。
+            agent.setId(agentId);
         }
 
         return agent;

@@ -136,7 +136,7 @@ class PortalChatRegressionTest {
         when(availability.selectBestProvider(eq(model), eq(USER_ID), eq(SESSION_ID), any()))
                 .thenReturn(new HighAvailabilityResult(provider, model, "fake-instance"));
         when(models.getStreamingClient(provider, model)).thenReturn(new DeterministicModel());
-        when(agentTools.getAvailableTools(any())).thenReturn(List.of());
+        // 未配置 MCP 服务时，工具管理器不会向模型提供外部动作。
 
         AgentMessageHandler handler = new AgentMessageHandler(models, messages, availability, sessions, settings, llms,
                 builtInTools, mock(BillingService.class), accounts, activeSessions, mock(TraceCollector.class),

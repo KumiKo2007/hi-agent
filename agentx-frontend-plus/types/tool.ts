@@ -57,6 +57,15 @@ export interface ToolItem {
   }
 }
 
+export interface McpToolAction {
+  serviceId: string
+  serverName: string
+  name: string
+  description: string
+  parameters: Record<string, unknown>
+  classification: 'READ_ONLY' | 'WRITE_REQUIRES_APPROVAL'
+}
+
 export type PluginInstallConfig = SsePluginConfig | StdioPluginConfig;
 
 export interface SsePluginConfig {

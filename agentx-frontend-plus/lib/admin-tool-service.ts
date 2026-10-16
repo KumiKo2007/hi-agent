@@ -1,6 +1,22 @@
 import { httpClient } from "@/lib/http-client";
 import { API_ENDPOINTS } from "@/lib/api-config";
 import { ApiResponse } from "@/types/api";
+import type { McpToolAction } from "@/types/tool";
+
+export async function getAdminMcpActions(serviceId: string): Promise<ApiResponse<McpToolAction[]>> {
+  return httpClient.get(`/admin/tools/${encodeURIComponent(serviceId)}/actions`)
+}
+
+export async function classifyAdminMcpAction(
+  serviceId: string,
+  actionName: string,
+  classification: McpToolAction['classification']
+): Promise<ApiResponse<McpToolAction>> {
+  return httpClient.put(
+    `/admin/tools/${encodeURIComponent(serviceId)}/actions/${encodeURIComponent(actionName)}/classification`,
+    { classification }
+  )
+}
 
 // 工具状态枚举
 export enum ToolStatus {

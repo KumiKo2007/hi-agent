@@ -269,6 +269,7 @@ export default function AgentFormModal({
 
             <TabsContent value="tools" className="space-y-6">
               <AgentToolsForm
+                agentId={agentId}
                 formData={formData}
                 selectedType="agent"
                 toggleTool={toggleTool}

@@ -8,7 +8,9 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.xhy.application.tool.dto.ToolDTO;
 import org.xhy.application.tool.dto.ToolVersionDTO;
+import org.xhy.application.tool.dto.McpToolActionDTO;
 import org.xhy.application.tool.service.ToolAppService;
+import org.xhy.application.tool.service.ToolActionPolicyAppService;
 import org.xhy.infrastructure.auth.UserContext;
 import org.xhy.interfaces.api.common.Result;
 import org.xhy.interfaces.dto.tool.request.CreateToolRequest;
@@ -24,9 +26,18 @@ import org.springframework.web.bind.annotation.RequestBody;
 public class PortalToolController {
 
     private final ToolAppService toolAppService;
+    private final ToolActionPolicyAppService toolActionPolicyAppService;
 
-    public PortalToolController(ToolAppService toolAppService) {
+    public PortalToolController(ToolAppService toolAppService, ToolActionPolicyAppService toolActionPolicyAppService) {
         this.toolAppService = toolAppService;
+        this.toolActionPolicyAppService = toolActionPolicyAppService;
+    }
+
+    /** 已安装 MCP 服务中的工具动作和平台分类。 */
+    @GetMapping("/services/{serviceId}/actions")
+    public Result<List<McpToolActionDTO>> getServiceActions(@PathVariable String serviceId) {
+        return Result
+                .success(toolActionPolicyAppService.listInstalledActions(serviceId, UserContext.getCurrentUserId()));
     }
 
     /** 上传工具
