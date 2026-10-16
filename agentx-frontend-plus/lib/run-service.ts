@@ -17,6 +17,7 @@ export interface AgentRun {
   id: string
   sessionId: string
   agentId: string
+  knowledgeVersionId: string | null
   goal: string
   status: string
   result: string | null
@@ -24,6 +25,25 @@ export interface AgentRun {
   createdAt: string
   updatedAt: string
   steps: RunStep[]
+}
+
+export interface KnowledgeCitation {
+  knowledgeVersionId: string
+  documentId: string
+  originalDocumentId: string | null
+  fileId: string | null
+  fileName: string | null
+  page: number | null
+  content: string
+  sourceUrl: string
+}
+
+export interface KnowledgeRetrievalResult {
+  knowledgeVersionId: string
+  hasEvidence: boolean
+  message: string
+  canPublish: boolean
+  citations: KnowledgeCitation[]
 }
 
 export class RunService {
@@ -37,5 +57,13 @@ export class RunService {
 
   static start(sessionId: string, goal: string): Promise<ApiResponse<AgentRun>> {
     return httpClient.post(`/agents/sessions/${encodeURIComponent(sessionId)}/runs`, { goal })
+  }
+
+  static knowledge(runId: string, query: string): Promise<ApiResponse<KnowledgeRetrievalResult>> {
+    return httpClient.get(`/agents/runs/${encodeURIComponent(runId)}/knowledge?query=${encodeURIComponent(query)}`)
+  }
+
+  static citation(runId: string, documentId: string): Promise<ApiResponse<KnowledgeCitation>> {
+    return httpClient.get(`/agents/runs/${encodeURIComponent(runId)}/knowledge/documents/${encodeURIComponent(documentId)}`)
   }
 }

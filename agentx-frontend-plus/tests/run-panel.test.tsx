@@ -76,3 +76,42 @@ it("should_refreshAPendingRunUntilItsPersistedResultIsVisible", async () => {
   await screen.findByText("最终答案", {}, { timeout: 5000 })
   expect(detailCalls).toBeGreaterThan(1)
 })
+
+it("should_openAPinnedCitationThroughTheAuthenticatedRunApi", async () => {
+  const run = {
+    id: "run-3", sessionId: "session-1", agentId: "agent-1", knowledgeVersionId: "version-1",
+    goal: "Review docs", status: "COMPLETED", result: "Done", errorMessage: null,
+    createdAt: "2026-10-15T00:00:00", updatedAt: "2026-10-15T00:00:01", steps: [],
+  }
+  const citation = {
+    knowledgeVersionId: "version-1", documentId: "doc-1", originalDocumentId: "source-1",
+    fileId: "file-1", fileName: "guide.md", page: 2, content: "Excerpt", sourceUrl: "/rag/datasets/x",
+  }
+  const fetchMock = vi.fn(async (input: string | URL | Request) => {
+    const url = String(input)
+    if (url.endsWith("/agents/sessions/session-1/runs")) {
+      return new Response(JSON.stringify({ code: 200, data: [run] }), { status: 200 })
+    }
+    if (url.endsWith("/agents/runs/run-3")) {
+      return new Response(JSON.stringify({ code: 200, data: run }), { status: 200 })
+    }
+    if (url.includes("/agents/runs/run-3/knowledge?")) {
+      return new Response(JSON.stringify({ code: 200, data: {
+        knowledgeVersionId: "version-1", hasEvidence: true, canPublish: true,
+        message: "Found evidence", citations: [citation],
+      } }), { status: 200 })
+    }
+    if (url.endsWith("/agents/runs/run-3/knowledge/documents/doc-1")) {
+      return new Response(JSON.stringify({ code: 200, data: { ...citation, content: "Full pinned source" } }),
+        { status: 200 })
+    }
+    throw new Error(`意外的请求：${url}`)
+  })
+  vi.stubGlobal("fetch", fetchMock)
+
+  render(<RunPanel sessionId="session-1" />)
+  fireEvent.click(await screen.findByRole("button", { name: "guide.md · 第 2 页" }))
+  await screen.findByText("Full pinned source")
+  expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith(
+    "/agents/runs/run-3/knowledge/documents/doc-1"))).toBe(true)
+})

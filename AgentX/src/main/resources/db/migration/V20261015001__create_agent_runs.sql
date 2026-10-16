@@ -3,6 +3,7 @@ CREATE TABLE IF NOT EXISTS agent_runs (
     user_id VARCHAR(64) NOT NULL,
     session_id VARCHAR(64) NOT NULL,
     agent_id VARCHAR(64) NOT NULL,
+    knowledge_version_id VARCHAR(64),
     goal TEXT NOT NULL,
     status VARCHAR(32) NOT NULL,
     result TEXT,
@@ -14,6 +15,9 @@ CREATE TABLE IF NOT EXISTS agent_runs (
 
 CREATE INDEX IF NOT EXISTS idx_agent_runs_owner_session_time
     ON agent_runs (user_id, session_id, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_agent_runs_knowledge_version
+    ON agent_runs (knowledge_version_id);
 
 CREATE TABLE IF NOT EXISTS agent_run_steps (
     id VARCHAR(36) PRIMARY KEY,

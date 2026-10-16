@@ -8,6 +8,8 @@ public class RunDTO {
     private String id;
     private String sessionId;
     private String agentId;
+    /** Ready knowledge version pinned at run creation time, if the agent uses knowledge. */
+    private String knowledgeVersionId;
     private String goal;
     private String status;
     private String result;
@@ -33,6 +35,14 @@ public class RunDTO {
     }
     public void setAgentId(String agentId) {
         this.agentId = agentId;
+    }
+
+    public String getKnowledgeVersionId() {
+        return knowledgeVersionId;
+    }
+
+    public void setKnowledgeVersionId(String knowledgeVersionId) {
+        this.knowledgeVersionId = knowledgeVersionId;
     }
     public String getGoal() {
         return goal;

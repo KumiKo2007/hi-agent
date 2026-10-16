@@ -188,4 +188,13 @@ public class RagQaDatasetController {
         String userId = UserContext.getCurrentUserId();
         return Result.success(ragQaDatasetAppService.getReadyKnowledgeVersion(datasetId, versionId, userId));
     }
+
+    /** 按引用标识读取固定知识版本中的一条资料。 */
+    @GetMapping("/{datasetId}/ready-versions/{versionId}/documents/{documentId}")
+    public Result<RagVersionDocumentDTO> getReadyKnowledgeDocument(@PathVariable String datasetId,
+            @PathVariable String versionId, @PathVariable String documentId) {
+        String userId = UserContext.getCurrentUserId();
+        return Result
+                .success(ragQaDatasetAppService.getReadyKnowledgeDocument(datasetId, versionId, documentId, userId));
+    }
 }

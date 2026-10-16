@@ -20,6 +20,9 @@ public class RunEntity extends BaseEntity {
     private String sessionId;
     @TableField("agent_id")
     private String agentId;
+    /** The ready knowledge snapshot selected when this run was created. */
+    @TableField("knowledge_version_id")
+    private String knowledgeVersionId;
     @TableField("goal")
     private String goal;
     @TableField("status")
@@ -30,11 +33,18 @@ public class RunEntity extends BaseEntity {
     private String errorMessage;
 
     public static RunEntity create(String userId, String sessionId, String agentId, String goal) {
+        return create(userId, sessionId, agentId, goal, null);
+    }
+
+    /** Creates a run while pinning the knowledge snapshot used by its retrieval steps. */
+    public static RunEntity create(String userId, String sessionId, String agentId, String goal,
+            String knowledgeVersionId) {
         RunEntity run = new RunEntity();
         run.id = UUID.randomUUID().toString();
         run.userId = userId;
         run.sessionId = sessionId;
         run.agentId = agentId;
+        run.knowledgeVersionId = knowledgeVersionId;
         run.goal = goal;
         run.status = "PENDING";
         run.createdAt = LocalDateTime.now();
@@ -82,6 +92,14 @@ public class RunEntity extends BaseEntity {
     }
     public void setAgentId(String agentId) {
         this.agentId = agentId;
+    }
+
+    public String getKnowledgeVersionId() {
+        return knowledgeVersionId;
+    }
+
+    public void setKnowledgeVersionId(String knowledgeVersionId) {
+        this.knowledgeVersionId = knowledgeVersionId;
     }
     public String getGoal() {
         return goal;

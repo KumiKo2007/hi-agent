@@ -127,8 +127,9 @@ public class RagVersionDomainService {
     public RagVersionEntity findLatestReadyVersion(String ragId, String userId) {
         List<RagVersionEntity> versions = ragVersionRepository.selectList(Wrappers.<RagVersionEntity>lambdaQuery()
                 .eq(RagVersionEntity::getOriginalRagId, ragId).eq(RagVersionEntity::getUserId, userId)
-                .eq(RagVersionEntity::getSearchReady, true).orderByDesc(RagVersionEntity::getCreatedAt)
-                .orderByDesc(RagVersionEntity::getId).last("LIMIT 1"));
+                .eq(RagVersionEntity::getSearchReady, true)
+                .ne(RagVersionEntity::getPublishStatus, RagPublishStatus.REMOVED.getCode())
+                .orderByDesc(RagVersionEntity::getCreatedAt).orderByDesc(RagVersionEntity::getId).last("LIMIT 1"));
         return versions.isEmpty() ? null : versions.get(0);
     }
 
@@ -520,12 +521,34 @@ public class RagVersionDomainService {
             if (file != null) {
                 dto.setFileName(file.getFileName());
             }
+            dto.setSourceUrl("/rag/datasets/" + version.getOriginalRagId() + "/ready-versions/" + version.getId()
+                    + "/documents/" + doc.getId());
 
             return dto;
         }).collect(Collectors.toList());
         preview.setSampleDocuments(docDTOs);
 
         return preview;
+    }
+
+    /** Reads one document from a fixed version for a citation link. */
+    public RagVersionDocumentDTO getRagVersionDocument(String versionId, String documentId) {
+        RagVersionEntity version = getRagVersion(versionId);
+        RagVersionDocumentEntity document = ragVersionDocumentRepository.selectOne(
+                Wrappers.<RagVersionDocumentEntity>lambdaQuery().eq(RagVersionDocumentEntity::getId, documentId)
+                        .eq(RagVersionDocumentEntity::getRagVersionId, versionId));
+        if (document == null) {
+            throw new BusinessException("引用资料不存在");
+        }
+        RagVersionDocumentDTO dto = new RagVersionDocumentDTO();
+        BeanUtils.copyProperties(document, dto);
+        RagVersionFileEntity file = ragVersionFileRepository.selectById(document.getRagVersionFileId());
+        if (file != null) {
+            dto.setFileName(file.getFileName());
+        }
+        dto.setSourceUrl("/rag/datasets/" + version.getOriginalRagId() + "/ready-versions/" + version.getId()
+                + "/documents/" + document.getId());
+        return dto;
     }
 
     /** 获取RAG数据集的最新版本号
@@ -553,6 +576,15 @@ public class RagVersionDomainService {
         RagVersionEntity ragVersion = getRagVersion(versionId);
         if (!ragVersion.getUserId().equals(userId)) {
             throw new BusinessException("无权限删除该RAG版本");
+        }
+
+        // Keep immutable ready snapshots because completed runs may still expose their citations.
+        // Marking the version removed keeps it out of future pinning while preserving source rows.
+        if (Boolean.TRUE.equals(ragVersion.getSearchReady())) {
+            ragVersionRepository.update(Wrappers.<RagVersionEntity>lambdaUpdate().eq(RagVersionEntity::getId, versionId)
+                    .eq(RagVersionEntity::getUserId, userId)
+                    .set(RagVersionEntity::getPublishStatus, RagPublishStatus.REMOVED.getCode()));
+            return;
         }
 
         // 删除版本文件关联

@@ -1202,6 +1202,7 @@ CREATE TABLE IF NOT EXISTS public.agent_runs (
     user_id VARCHAR(64) NOT NULL,
     session_id VARCHAR(64) NOT NULL,
     agent_id VARCHAR(64) NOT NULL,
+    knowledge_version_id VARCHAR(64),
     goal TEXT NOT NULL,
     status VARCHAR(32) NOT NULL,
     result TEXT,
@@ -1214,6 +1215,8 @@ CREATE TABLE IF NOT EXISTS public.agent_runs (
 );
 CREATE INDEX IF NOT EXISTS idx_agent_runs_owner_session_time
     ON public.agent_runs (user_id, session_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_agent_runs_knowledge_version
+    ON public.agent_runs (knowledge_version_id);
 
 CREATE INDEX IF NOT EXISTS idx_agent_runs_recovery
     ON public.agent_runs (status, lease_until, created_at)

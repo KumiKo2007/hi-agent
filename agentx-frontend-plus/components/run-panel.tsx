@@ -3,7 +3,7 @@
 import { FormEvent, useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
-import { AgentRun, RunService } from "@/lib/run-service"
+import { AgentRun, KnowledgeCitation, KnowledgeRetrievalResult, RunService } from "@/lib/run-service"
 
 interface RunPanelProps {
   sessionId: string
@@ -24,6 +24,10 @@ export function RunPanel({ sessionId }: RunPanelProps) {
   const [goal, setGoal] = useState("")
   const [runs, setRuns] = useState<AgentRun[]>([])
   const [selectedRun, setSelectedRun] = useState<AgentRun | null>(null)
+  const [knowledgeResult, setKnowledgeResult] = useState<KnowledgeRetrievalResult | null>(null)
+  const [knowledgeLoading, setKnowledgeLoading] = useState(false)
+  const [selectedCitation, setSelectedCitation] = useState<{ runId: string; citation: KnowledgeCitation } | null>(null)
+  const [citationLoading, setCitationLoading] = useState(false)
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -53,8 +57,32 @@ export function RunPanel({ sessionId }: RunPanelProps) {
   }, [sessionId])
 
   useEffect(() => {
-    if (!selectedRun || ["COMPLETED", "FAILED", "CANCELLED"].includes(selectedRun.status)) return
-    const runId = selectedRun.id
+    let active = true
+    setKnowledgeResult(null)
+    setSelectedCitation(null)
+    if (!selectedRun?.knowledgeVersionId) {
+      setKnowledgeLoading(false)
+      return () => { active = false }
+    }
+    setKnowledgeLoading(true)
+    RunService.knowledge(selectedRun.id, selectedRun.goal).then(response => {
+      if (!active) return
+      if (response.code === 200) setKnowledgeResult(response.data)
+      else setError(response.message || "加载资料引用失败")
+    }).catch(cause => {
+      if (active) setError(cause instanceof Error ? cause.message : "加载资料引用失败")
+    }).finally(() => {
+      if (active) setKnowledgeLoading(false)
+    })
+    return () => { active = false }
+  }, [selectedRun?.id, selectedRun?.goal, selectedRun?.knowledgeVersionId])
+
+  const selectedRunId = selectedRun?.id
+  const selectedRunStatus = selectedRun?.status
+
+  useEffect(() => {
+    if (!selectedRunId || ["COMPLETED", "FAILED", "CANCELLED"].includes(selectedRunStatus)) return
+    const runId = selectedRunId
     let active = true
     let refreshing = false
     const timer = setInterval(async () => {
@@ -75,13 +103,32 @@ export function RunPanel({ sessionId }: RunPanelProps) {
       active = false
       clearInterval(timer)
     }
-  }, [sessionId, selectedRun?.id, selectedRun?.status])
+  }, [selectedRunId, selectedRunStatus])
 
   async function selectRun(runId: string) {
     setError(null)
     const response = await RunService.detail(runId)
     if (response.code === 200) setSelectedRun(response.data)
     else setError(response.message || "加载运行详情失败")
+  }
+
+  async function openCitation(documentId: string) {
+    if (!selectedRun || citationLoading) return
+    const runId = selectedRun.id
+    setCitationLoading(true)
+    setError(null)
+    try {
+      const response = await RunService.citation(runId, documentId)
+      if (response.code !== 200 || !response.data) {
+        setError(response.message || "读取引用资料失败")
+        return
+      }
+      setSelectedCitation({ runId, citation: response.data })
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "读取引用资料失败")
+    } finally {
+      setCitationLoading(false)
+    }
   }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -150,6 +197,38 @@ export function RunPanel({ sessionId }: RunPanelProps) {
                 <p className="text-sm font-medium">运行 {selectedRun.id}</p>
                 <p className="text-xs text-muted-foreground">会话 {selectedRun.sessionId} · {statusNames[selectedRun.status] || selectedRun.status}</p>
                 <p className="whitespace-pre-wrap text-sm">{selectedRun.result || selectedRun.errorMessage || "等待结果"}</p>
+                {selectedRun.knowledgeVersionId && (
+                  <div className="space-y-2 rounded border bg-muted/20 p-3" aria-label="资料引用">
+                    <h4 className="text-sm font-medium">固定知识版本与引用</h4>
+                    <p className="text-xs text-muted-foreground">版本 {selectedRun.knowledgeVersionId}</p>
+                    {knowledgeLoading ? <p className="text-sm text-muted-foreground">检索引用中...</p> : knowledgeResult ? (
+                      <>
+                        <p className={knowledgeResult.hasEvidence ? "text-sm" : "text-sm text-destructive"}>
+                          {knowledgeResult.message}
+                        </p>
+                        {knowledgeResult.citations.length > 0 && (
+                          <ul className="space-y-2">
+                            {knowledgeResult.citations.map(citation => (
+                              <li key={citation.documentId} className="text-sm">
+                                <button type="button" className="underline text-left" disabled={citationLoading}
+                                  onClick={() => void openCitation(citation.documentId)}>
+                                  {citation.fileName || citation.fileId || "资料"} · 第 {citation.page ?? "?"} 页
+                                </button>
+                                <p className="line-clamp-3 text-xs text-muted-foreground">{citation.content}</p>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                        {selectedCitation?.runId === selectedRun.id && (
+                          <div className="rounded border p-3" aria-label="引用资料全文">
+                            <p className="text-sm font-medium">{selectedCitation.citation.fileName || "资料"} · 第 {selectedCitation.citation.page ?? "?"} 页</p>
+                            <p className="whitespace-pre-wrap text-sm">{selectedCitation.citation.content}</p>
+                          </div>
+                        )}
+                      </>
+                    ) : null}
+                  </div>
+                )}
                 <div>
                   <h4 className="mb-2 text-sm font-medium">步骤</h4>
                   <ol className="space-y-2">

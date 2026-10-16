@@ -3,6 +3,7 @@ package org.xhy.application.run.service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.xhy.application.run.assembler.RunAssembler;
 import org.xhy.application.run.dto.RunDTO;
 import org.xhy.domain.conversation.model.SessionEntity;
@@ -22,17 +23,26 @@ public class RunAppService {
     private final SessionDomainService sessions;
     private final RunStore store;
     private final RunDispatch dispatch;
+    private final RunKnowledgeVersionResolver knowledgeVersions;
 
     public RunAppService(SessionDomainService sessions, RunStore store, RunDispatch dispatch) {
+        this(sessions, store, dispatch, RunKnowledgeVersionResolver.none());
+    }
+
+    @Autowired
+    public RunAppService(SessionDomainService sessions, RunStore store, RunDispatch dispatch,
+            RunKnowledgeVersionResolver knowledgeVersions) {
         this.sessions = sessions;
         this.store = store;
         this.dispatch = dispatch;
+        this.knowledgeVersions = knowledgeVersions;
     }
 
     /** 创建持久运行并派发工作；浏览器可以立即重新读取其状态。 */
     public RunDTO start(String sessionId, String goal, String userId) {
         SessionEntity session = sessions.getSession(sessionId, userId);
-        RunEntity run = RunEntity.create(userId, sessionId, session.getAgentId(), goal);
+        String knowledgeVersionId = knowledgeVersions.resolve(session.getAgentId(), userId);
+        RunEntity run = RunEntity.create(userId, sessionId, session.getAgentId(), goal, knowledgeVersionId);
         RunStepEntity step = RunStepEntity.modelCall(run.getId());
         store.createRunWithStep(run, step);
         try {

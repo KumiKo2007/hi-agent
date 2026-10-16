@@ -761,4 +761,15 @@ public class RagQaDatasetAppService {
         }
         return ragVersionDomainService.getRagContentPreview(versionId);
     }
+
+    /** Reads a single source row from an owned, ready version for a citation link. */
+    public RagVersionDocumentDTO getReadyKnowledgeDocument(String datasetId, String versionId, String documentId,
+            String userId) {
+        RagVersionEntity version = ragVersionDomainService.getRagVersion(versionId);
+        if (!Objects.equals(version.getOriginalRagId(), datasetId) || !Objects.equals(version.getUserId(), userId)
+                || !Boolean.TRUE.equals(version.getSearchReady())) {
+            throw new BusinessException("可检索知识版本不存在或无访问权限");
+        }
+        return ragVersionDomainService.getRagVersionDocument(versionId, documentId);
+    }
 }
