@@ -100,7 +100,7 @@ public class PortalAgentSessionController {
 
         logger.info("用户 {} 请求中断会话: {}", userId, sessionId);
 
-        boolean success = chatSessionManager.interruptSession(sessionId);
+        boolean success = chatSessionManager.interruptSession(sessionId, userId);
 
         if (success) {
             logger.info("成功中断会话: sessionId={}, userId={}", sessionId, userId);

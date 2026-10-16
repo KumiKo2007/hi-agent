@@ -59,6 +59,10 @@ export class RunService {
     return httpClient.post(`/agents/sessions/${encodeURIComponent(sessionId)}/runs`, { goal })
   }
 
+  static cancel(runId: string): Promise<ApiResponse<AgentRun>> {
+    return httpClient.post(`/agents/runs/${encodeURIComponent(runId)}/cancel`)
+  }
+
   static knowledge(runId: string, query: string): Promise<ApiResponse<KnowledgeRetrievalResult>> {
     return httpClient.get(`/agents/runs/${encodeURIComponent(runId)}/knowledge?query=${encodeURIComponent(query)}`)
   }

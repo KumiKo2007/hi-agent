@@ -52,6 +52,16 @@ public class MyBatisRunStore implements RunStore {
 
     @Override
     @Transactional
+    public boolean cancelOwned(String runId, String userId) {
+        if (runs.cancelOwned(runId, userId) == 0) {
+            return false;
+        }
+        steps.cancelOpenSteps(runId);
+        return true;
+    }
+
+    @Override
+    @Transactional
     public boolean claim(String runId, String token, int leaseSeconds) {
         if (runs.claim(runId, token, leaseSeconds) == 0) {
             return false;

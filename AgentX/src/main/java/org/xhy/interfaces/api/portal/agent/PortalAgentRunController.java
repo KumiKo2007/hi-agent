@@ -1,6 +1,7 @@
 package org.xhy.interfaces.api.portal.agent;
 
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -41,5 +42,17 @@ public class PortalAgentRunController {
     @GetMapping("/runs/{runId}")
     public Result<RunDTO> detail(@PathVariable String runId) {
         return Result.success(runs.detail(runId, UserContext.getCurrentUserId()));
+    }
+
+    /** 取消当前使用者拥有的未完成运行。 */
+    @DeleteMapping("/runs/{runId}")
+    public Result<RunDTO> cancel(@PathVariable String runId) {
+        return Result.success(runs.cancel(runId, UserContext.getCurrentUserId()));
+    }
+
+    /** 动作式别名，供 Web 客户端和旧调用方使用。 */
+    @PostMapping("/runs/{runId}/cancel")
+    public Result<RunDTO> cancelByAction(@PathVariable String runId) {
+        return Result.success(runs.cancel(runId, UserContext.getCurrentUserId()));
     }
 }

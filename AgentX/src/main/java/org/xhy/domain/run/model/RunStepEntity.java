@@ -56,6 +56,14 @@ public class RunStepEntity extends BaseEntity {
         updatedAt = LocalDateTime.now();
     }
 
+    /** 取消尚未完成的动作，避免刷新后仍显示为可继续执行。 */
+    public void cancel(String reason) {
+        status = "CANCELLED";
+        result = null;
+        errorMessage = reason;
+        updatedAt = LocalDateTime.now();
+    }
+
     public String getId() {
         return id;
     }

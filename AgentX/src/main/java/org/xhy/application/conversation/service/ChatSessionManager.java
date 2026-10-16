@@ -18,12 +18,18 @@ public class ChatSessionManager {
     /** 会话信息 */
     public static class SessionInfo {
         private final String sessionId;
+        private final String userId;
         private final SseEmitter emitter;
         private final AtomicBoolean interrupted;
         private final long startTime;
 
         public SessionInfo(String sessionId, SseEmitter emitter) {
+            this(sessionId, null, emitter);
+        }
+
+        public SessionInfo(String sessionId, String userId, SseEmitter emitter) {
             this.sessionId = sessionId;
+            this.userId = userId;
             this.emitter = emitter;
             this.interrupted = new AtomicBoolean(false);
             this.startTime = System.currentTimeMillis();
@@ -31,6 +37,10 @@ public class ChatSessionManager {
 
         public String getSessionId() {
             return sessionId;
+        }
+
+        public String getUserId() {
+            return userId;
         }
 
         public SseEmitter getEmitter() {
@@ -57,7 +67,12 @@ public class ChatSessionManager {
      * @param sessionId 会话ID
      * @param emitter SSE发送器 */
     public void registerSession(String sessionId, SseEmitter emitter) {
-        SessionInfo sessionInfo = new SessionInfo(sessionId, emitter);
+        registerSession(sessionId, null, emitter);
+    }
+
+    /** 注册带所有者的对话会话，使中断请求不能跨用户操作同一个会话。 */
+    public void registerSession(String sessionId, String userId, SseEmitter emitter) {
+        SessionInfo sessionInfo = new SessionInfo(sessionId, userId, emitter);
         activeSessions.put(sessionId, sessionInfo);
         logger.info("注册对话会话: sessionId={}", sessionId);
 
@@ -92,6 +107,20 @@ public class ChatSessionManager {
      * @param sessionId 会话ID
      * @return 是否成功中断（true表示会话存在且成功中断，false表示会话不存在） */
     public boolean interruptSession(String sessionId) {
+        return interruptSessionInternal(sessionId);
+    }
+
+    /** 只有注册该 SSE 会话的用户可以通过门户接口中断它。 */
+    public boolean interruptSession(String sessionId, String userId) {
+        SessionInfo sessionInfo = activeSessions.get(sessionId);
+        if (sessionInfo == null || sessionInfo.getUserId() == null || !sessionInfo.getUserId().equals(userId)) {
+            logger.warn("拒绝跨用户中断会话: sessionId={}, userId={}", sessionId, userId);
+            return false;
+        }
+        return interruptSessionInternal(sessionId);
+    }
+
+    private boolean interruptSessionInternal(String sessionId) {
         SessionInfo sessionInfo = activeSessions.get(sessionId);
         if (sessionInfo == null) {
             logger.warn("尝试中断不存在的会话: sessionId={}", sessionId);

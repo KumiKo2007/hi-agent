@@ -41,6 +41,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
@@ -48,6 +49,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 /** 目标运行的公开 HTTP 行为测试。 */
@@ -118,6 +120,84 @@ class PortalAgentRunControllerTest {
 
         assertEquals(404, envelope.path("code").asInt());
         assertEquals(0, envelope.path("data").size());
+    }
+
+    @Test
+    @Timeout(30)
+    void should_allowOwnerToCancelPendingRunAndPreventWorkerSideEffects() throws Exception {
+        SessionDomainService sessions = mock(SessionDomainService.class);
+        SessionEntity session = new SessionEntity();
+        session.setId("session-1");
+        session.setAgentId("agent-1");
+        when(sessions.getSession("session-1", "owner")).thenReturn(session);
+
+        InMemoryStore store = new InMemoryStore();
+        RunAppService service = new RunAppService(sessions, store, ignored -> {
+            // Keep the run pending so the owner can cancel it before a worker starts.
+        });
+        MockMvc api = MockMvcBuilders.standaloneSetup(new PortalAgentRunController(service))
+                .setControllerAdvice(new GlobalExceptionHandler()).build();
+        UserContext.setCurrentUserId("owner");
+
+        JsonNode created = data(api
+                .perform(post("/agents/sessions/session-1/runs").contentType("application/json")
+                        .content("{\"goal\":\"取消这个目标\"}"))
+                .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8));
+        String runId = created.path("id").asText();
+
+        JsonNode cancelled = data(api.perform(delete("/agents/runs/" + runId)).andReturn().getResponse()
+                .getContentAsString(StandardCharsets.UTF_8));
+        assertEquals("CANCELLED", cancelled.path("status").asText());
+        assertEquals("CANCELLED", cancelled.path("steps").get(0).path("status").asText());
+
+        AtomicInteger modelCalls = new AtomicInteger();
+        new RunWorker(store, run -> {
+            modelCalls.incrementAndGet();
+            return "不应产生的结果";
+        }).process(runId);
+
+        JsonNode reloaded = data(api.perform(get("/agents/runs/" + runId)).andReturn().getResponse()
+                .getContentAsString(StandardCharsets.UTF_8));
+        assertEquals("CANCELLED", reloaded.path("status").asText());
+        assertEquals(0, modelCalls.get());
+    }
+
+    @Test
+    @Timeout(30)
+    void should_rejectCrossUserCancelAndListWithoutChangingRun() throws Exception {
+        SessionDomainService sessions = mock(SessionDomainService.class);
+        SessionEntity session = new SessionEntity();
+        session.setId("session-1");
+        session.setAgentId("agent-1");
+        when(sessions.getSession("session-1", "owner")).thenReturn(session);
+        when(sessions.getSession("session-1", "outsider")).thenReturn(session);
+
+        InMemoryStore store = new InMemoryStore();
+        RunAppService service = new RunAppService(sessions, store, ignored -> {
+            // Keep the run pending so a rejected request cannot invoke a worker.
+        });
+        MockMvc api = MockMvcBuilders.standaloneSetup(new PortalAgentRunController(service))
+                .setControllerAdvice(new GlobalExceptionHandler()).build();
+
+        UserContext.setCurrentUserId("owner");
+        JsonNode created = data(api
+                .perform(post("/agents/sessions/session-1/runs").contentType("application/json")
+                        .content("{\"goal\":\"保留这个目标\"}"))
+                .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8));
+        String runId = created.path("id").asText();
+
+        UserContext.setCurrentUserId("outsider");
+        JsonNode cancelResponse = json.readTree(api.perform(delete("/agents/runs/" + runId)).andReturn().getResponse()
+                .getContentAsString(StandardCharsets.UTF_8));
+        assertEquals(404, cancelResponse.path("code").asInt());
+        JsonNode listResponse = data(api.perform(get("/agents/sessions/session-1/runs")).andReturn().getResponse()
+                .getContentAsString(StandardCharsets.UTF_8));
+        assertEquals(0, listResponse.size());
+
+        UserContext.setCurrentUserId("owner");
+        JsonNode ownerView = data(api.perform(get("/agents/runs/" + runId)).andReturn().getResponse()
+                .getContentAsString(StandardCharsets.UTF_8));
+        assertEquals("PENDING", ownerView.path("status").asText());
     }
 
     @Test
@@ -246,6 +326,18 @@ class PortalAgentRunControllerTest {
         @Override
         public RunEntity findForWorker(String runId) {
             return copy(runs.get(runId));
+        }
+
+        @Override
+        public boolean cancelOwned(String runId, String userId) {
+            RunEntity run = runs.get(runId);
+            if (run == null || !userId.equals(run.getUserId())
+                    || !("PENDING".equals(run.getStatus()) || "RUNNING".equals(run.getStatus()))) {
+                return false;
+            }
+            run.cancel();
+            steps.get(runId).forEach(step -> step.cancel("运行已取消"));
+            return true;
         }
 
         @Override

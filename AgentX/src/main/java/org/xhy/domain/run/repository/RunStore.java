@@ -13,6 +13,9 @@ public interface RunStore {
     List<RunEntity> listOwnedBySession(String sessionId, String userId);
     List<RunStepEntity> stepsForRun(String runId);
 
+    /** 只有运行所有者可以取消尚未完成的运行。 */
+    boolean cancelOwned(String runId, String userId);
+
     /** 以数据库原子更新取得运行的限时所有权。 */
     boolean claim(String runId, String token, int leaseSeconds);
 

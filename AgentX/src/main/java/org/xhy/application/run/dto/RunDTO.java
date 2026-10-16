@@ -8,6 +8,9 @@ public class RunDTO {
     private String id;
     private String sessionId;
     private String agentId;
+    private String agentVersionId;
+    private String agentVersionNumber;
+    private String modelConnectionType;
     /** Ready knowledge version pinned at run creation time, if the agent uses knowledge. */
     private String knowledgeVersionId;
     private String goal;
@@ -35,6 +38,24 @@ public class RunDTO {
     }
     public void setAgentId(String agentId) {
         this.agentId = agentId;
+    }
+    public String getAgentVersionId() {
+        return agentVersionId;
+    }
+    public void setAgentVersionId(String agentVersionId) {
+        this.agentVersionId = agentVersionId;
+    }
+    public String getAgentVersionNumber() {
+        return agentVersionNumber;
+    }
+    public void setAgentVersionNumber(String agentVersionNumber) {
+        this.agentVersionNumber = agentVersionNumber;
+    }
+    public String getModelConnectionType() {
+        return modelConnectionType;
+    }
+    public void setModelConnectionType(String modelConnectionType) {
+        this.modelConnectionType = modelConnectionType;
     }
 
     public String getKnowledgeVersionId() {

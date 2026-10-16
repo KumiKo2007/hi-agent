@@ -152,7 +152,7 @@ public class ConversationAppService {
         SseEmitter emitter = handler.chat(environment, transport);
 
         // 5. 注册会话到会话管理器（支持中断功能）
-        chatSessionManager.registerSession(chatRequest.getSessionId(), emitter);
+        chatSessionManager.registerSession(chatRequest.getSessionId(), userId, emitter);
 
         return emitter;
     }
@@ -178,7 +178,7 @@ public class ConversationAppService {
         SseEmitter emitter = handler.chat(environment, transport);
 
         // 5. 注册会话到会话管理器（支持中断功能）
-        chatSessionManager.registerSession(chatRequest.getSessionId(), emitter);
+        chatSessionManager.registerSession(chatRequest.getSessionId(), userId, emitter);
 
         return emitter;
     }

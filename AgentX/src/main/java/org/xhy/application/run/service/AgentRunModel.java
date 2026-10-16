@@ -5,6 +5,7 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import org.springframework.stereotype.Component;
 import org.xhy.domain.agent.model.AgentEntity;
+import org.xhy.domain.agent.model.AgentVersionEntity;
 import org.xhy.domain.agent.model.AgentWorkspaceEntity;
 import org.xhy.domain.agent.service.AgentDomainService;
 import org.xhy.domain.agent.service.AgentWorkspaceDomainService;
@@ -40,8 +41,18 @@ public class AgentRunModel implements RunModel {
         if (!run.getUserId().equals(agent.getUserId()) && !Boolean.TRUE.equals(agent.getEnabled())) {
             throw new BusinessException("助理已被禁用");
         }
+        AgentVersionEntity pinnedVersion = null;
+        if (run.getAgentVersionId() != null && !run.getAgentVersionId().isBlank()) {
+            pinnedVersion = agents.getAgentVersionById(run.getAgentVersionId());
+            if (pinnedVersion == null || !run.getAgentId().equals(pinnedVersion.getAgentId())) {
+                throw new BusinessException("固定 Agent 版本不存在");
+            }
+        }
         AgentWorkspaceEntity workspace = workspaces.getWorkspace(run.getAgentId(), run.getUserId());
-        String modelId = workspace.getLlmModelConfig().getModelId();
+        String modelId = run.getModelId();
+        if (modelId == null || modelId.isBlank()) {
+            modelId = workspace.getLlmModelConfig().getModelId();
+        }
         if (modelId == null || modelId.isBlank()) {
             throw new BusinessException("助理尚未配置模型");
         }
@@ -50,10 +61,15 @@ public class AgentRunModel implements RunModel {
         ProviderEntity provider = llms.getProvider(model.getProviderId());
         provider.isActive();
         provider.isAvailable(run.getUserId());
+        if (run.getModelConnectionType() != null
+                && !run.getModelConnectionType().equals(provider.getProtocol().name())) {
+            throw new BusinessException("模型连接类型已变化，运行暂停");
+        }
 
         List<ChatMessage> messages = new ArrayList<>();
-        if (agent.getSystemPrompt() != null && !agent.getSystemPrompt().isBlank()) {
-            messages.add(new SystemMessage(agent.getSystemPrompt()));
+        String systemPrompt = pinnedVersion == null ? agent.getSystemPrompt() : pinnedVersion.getSystemPrompt();
+        if (systemPrompt != null && !systemPrompt.isBlank()) {
+            messages.add(new SystemMessage(systemPrompt));
         }
         messages.add(new UserMessage(run.getGoal()));
         return models.getStrandClient(provider, model).chat(messages).aiMessage().text();

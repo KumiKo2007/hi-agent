@@ -44,6 +44,14 @@ public interface RunMapper extends BaseMapper<RunEntity> {
             """)
     int fail(@Param("runId") String runId, @Param("token") String token, @Param("reason") String reason);
 
+    @Update("""
+            UPDATE agent_runs SET status = 'CANCELLED', result = NULL, error_message = '运行已取消',
+                lease_token = NULL, lease_until = NULL, updated_at = CURRENT_TIMESTAMP
+            WHERE id = #{runId} AND user_id = #{userId} AND deleted_at IS NULL
+              AND status IN ('PENDING', 'RUNNING', 'WAITING_APPROVAL', 'WAITING_RECONCILIATION')
+            """)
+    int cancelOwned(@Param("runId") String runId, @Param("userId") String userId);
+
     @Select("""
             SELECT id FROM agent_runs WHERE deleted_at IS NULL
               AND (status = 'PENDING' OR (status = 'RUNNING' AND lease_until <= CURRENT_TIMESTAMP))

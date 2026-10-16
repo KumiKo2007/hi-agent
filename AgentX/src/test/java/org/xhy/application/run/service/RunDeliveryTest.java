@@ -17,6 +17,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -130,6 +132,35 @@ class RunDeliveryTest {
         assertEquals("COMPLETED", database.findOwned(run.getId(), "owner").getStatus());
     }
 
+    @Test
+    void should_fenceAnActiveWorkerAfterOwnerCancelsTheRun() throws Exception {
+        MemoryStore database = new MemoryStore();
+        RunEntity run = RunEntity.create("owner", "session-1", "agent-1", "取消执行中的目标");
+        database.createRunWithStep(run, RunStepEntity.modelCall(run.getId()));
+        CountDownLatch modelStarted = new CountDownLatch(1);
+        CountDownLatch releaseModel = new CountDownLatch(1);
+        Thread workerThread = new Thread(() -> new RunWorker(database, ignored -> {
+            modelStarted.countDown();
+            try {
+                assertTrue(releaseModel.await(5, TimeUnit.SECONDS));
+            } catch (InterruptedException exception) {
+                Thread.currentThread().interrupt();
+                throw new IllegalStateException(exception);
+            }
+            return "过期结果";
+        }).process(run.getId()));
+        workerThread.start();
+
+        assertTrue(modelStarted.await(5, TimeUnit.SECONDS));
+        assertTrue(database.cancelOwned(run.getId(), "owner"));
+        releaseModel.countDown();
+        workerThread.join(5000);
+
+        assertEquals("CANCELLED", database.findOwned(run.getId(), "owner").getStatus());
+        assertNull(database.findOwned(run.getId(), "owner").getResult());
+        assertEquals("CANCELLED", database.stepsForRun(run.getId()).get(0).getStatus());
+    }
+
     private static final class MemoryStore implements RunStore {
         private final Map<String, RunEntity> runs = new LinkedHashMap<>();
         private final Map<String, RunStepEntity> steps = new LinkedHashMap<>();
@@ -152,6 +183,18 @@ class RunDeliveryTest {
         @Override
         public synchronized RunEntity findForWorker(String runId) {
             return copy(runs.get(runId));
+        }
+
+        @Override
+        public synchronized boolean cancelOwned(String runId, String userId) {
+            RunEntity run = runs.get(runId);
+            if (run == null || !userId.equals(run.getUserId())
+                    || !("PENDING".equals(run.getStatus()) || "RUNNING".equals(run.getStatus()))) {
+                return false;
+            }
+            run.cancel();
+            steps.get(runId).cancel("运行已取消");
+            return true;
         }
 
         @Override
@@ -190,7 +233,7 @@ class RunDeliveryTest {
                 failNextCompletion = false;
                 throw new IllegalStateException("数据库提交暂时失败");
             }
-            if (!renewLease(runId, token, 90)) {
+            if (!"RUNNING".equals(runs.get(runId).getStatus()) || !renewLease(runId, token, 90)) {
                 return false;
             }
             runs.get(runId).complete(answer);
@@ -200,7 +243,7 @@ class RunDeliveryTest {
 
         @Override
         public synchronized boolean fail(String runId, String token, String reason) {
-            if (!renewLease(runId, token, 90)) {
+            if (!"RUNNING".equals(runs.get(runId).getStatus()) || !renewLease(runId, token, 90)) {
                 return false;
             }
             runs.get(runId).fail(reason);

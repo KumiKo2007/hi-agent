@@ -30,6 +30,7 @@ export function RunPanel({ sessionId }: RunPanelProps) {
   const [citationLoading, setCitationLoading] = useState(false)
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
+  const [cancelling, setCancelling] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -152,6 +153,26 @@ export function RunPanel({ sessionId }: RunPanelProps) {
     }
   }
 
+  async function cancelSelectedRun() {
+    if (!selectedRun || cancelling) return
+    setCancelling(true)
+    setError(null)
+    try {
+      const response = await RunService.cancel(selectedRun.id)
+      if (response.code !== 200 || !response.data) {
+        setError(response.message || "取消运行失败")
+        return
+      }
+      const cancelledRun = response.data
+      setSelectedRun(cancelledRun)
+      setRuns(previous => previous.map(run => run.id === cancelledRun.id ? cancelledRun : run))
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "取消运行失败")
+    } finally {
+      setCancelling(false)
+    }
+  }
+
   return (
     <section className="flex h-full min-h-0 flex-col overflow-y-auto p-6" aria-label="目标运行">
       <div className="mx-auto w-full max-w-4xl space-y-6">
@@ -196,6 +217,11 @@ export function RunPanel({ sessionId }: RunPanelProps) {
               <div className="space-y-4 rounded-md border p-4">
                 <p className="text-sm font-medium">运行 {selectedRun.id}</p>
                 <p className="text-xs text-muted-foreground">会话 {selectedRun.sessionId} · {statusNames[selectedRun.status] || selectedRun.status}</p>
+                {["PENDING", "RUNNING", "WAITING_APPROVAL", "WAITING_RECONCILIATION"].includes(selectedRun.status) && (
+                  <Button type="button" variant="outline" onClick={() => void cancelSelectedRun()} disabled={cancelling}>
+                    {cancelling ? "取消中..." : "取消运行"}
+                  </Button>
+                )}
                 <p className="whitespace-pre-wrap text-sm">{selectedRun.result || selectedRun.errorMessage || "等待结果"}</p>
                 {selectedRun.knowledgeVersionId && (
                   <div className="space-y-2 rounded border bg-muted/20 p-3" aria-label="资料引用">

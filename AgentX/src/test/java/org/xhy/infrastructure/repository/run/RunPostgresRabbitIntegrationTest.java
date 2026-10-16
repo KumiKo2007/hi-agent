@@ -180,6 +180,8 @@ class RunPostgresRabbitIntegrationTest {
                     new ClassPathResource("db/migration/V20261015001__create_agent_runs.sql"));
             ScriptUtils.executeSqlScript(connection,
                     new ClassPathResource("db/migration/V20261015004__run_delivery_lease.sql"));
+            ScriptUtils.executeSqlScript(connection,
+                    new ClassPathResource("db/migration/V20261016001__pin_run_agent_version.sql"));
         }
     }
 

@@ -20,6 +20,16 @@ public class RunEntity extends BaseEntity {
     private String sessionId;
     @TableField("agent_id")
     private String agentId;
+    /** 运行创建时固定的已发布 Agent 版本。 */
+    @TableField("agent_version_id")
+    private String agentVersionId;
+    @TableField("agent_version_number")
+    private String agentVersionNumber;
+    /** 运行创建时固定的模型连接标识。 */
+    @TableField("model_id")
+    private String modelId;
+    @TableField("model_connection_type")
+    private String modelConnectionType;
     /** The ready knowledge snapshot selected when this run was created. */
     @TableField("knowledge_version_id")
     private String knowledgeVersionId;
@@ -52,6 +62,17 @@ public class RunEntity extends BaseEntity {
         return run;
     }
 
+    /** 创建已经固定 Agent 和模型连接的运行快照。 */
+    public static RunEntity create(String userId, String sessionId, String agentId, String goal, String agentVersionId,
+            String agentVersionNumber, String modelId, String modelConnectionType) {
+        RunEntity run = create(userId, sessionId, agentId, goal);
+        run.agentVersionId = agentVersionId;
+        run.agentVersionNumber = agentVersionNumber;
+        run.modelId = modelId;
+        run.modelConnectionType = modelConnectionType;
+        return run;
+    }
+
     public void start() {
         status = "RUNNING";
         updatedAt = LocalDateTime.now();
@@ -66,6 +87,14 @@ public class RunEntity extends BaseEntity {
     public void fail(String reason) {
         status = "FAILED";
         errorMessage = reason;
+        updatedAt = LocalDateTime.now();
+    }
+
+    /** 标记运行已取消；工作者随后不能再提交结果。 */
+    public void cancel() {
+        status = "CANCELLED";
+        result = null;
+        errorMessage = "运行已取消";
         updatedAt = LocalDateTime.now();
     }
 
@@ -92,6 +121,30 @@ public class RunEntity extends BaseEntity {
     }
     public void setAgentId(String agentId) {
         this.agentId = agentId;
+    }
+    public String getAgentVersionId() {
+        return agentVersionId;
+    }
+    public void setAgentVersionId(String agentVersionId) {
+        this.agentVersionId = agentVersionId;
+    }
+    public String getAgentVersionNumber() {
+        return agentVersionNumber;
+    }
+    public void setAgentVersionNumber(String agentVersionNumber) {
+        this.agentVersionNumber = agentVersionNumber;
+    }
+    public String getModelId() {
+        return modelId;
+    }
+    public void setModelId(String modelId) {
+        this.modelId = modelId;
+    }
+    public String getModelConnectionType() {
+        return modelConnectionType;
+    }
+    public void setModelConnectionType(String modelConnectionType) {
+        this.modelConnectionType = modelConnectionType;
     }
 
     public String getKnowledgeVersionId() {

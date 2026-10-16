@@ -77,6 +77,36 @@ it("should_refreshAPendingRunUntilItsPersistedResultIsVisible", async () => {
   expect(detailCalls).toBeGreaterThan(1)
 })
 
+it("should_cancelAnOwnedPendingRunAndShowItsPersistedStatus", async () => {
+  const pending = {
+    id: "run-3", sessionId: "session-1", agentId: "agent-1", goal: "停止目标",
+    status: "PENDING", result: null, errorMessage: null,
+    createdAt: "2026-10-15T00:00:00", updatedAt: "2026-10-15T00:00:00", steps: [],
+  }
+  const cancelled = { ...pending, status: "CANCELLED", errorMessage: "运行已取消" }
+  const fetchMock = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+    const url = String(input)
+    if (url.endsWith("/agents/sessions/session-1/runs") && !init?.method) {
+      return new Response(JSON.stringify({ code: 200, data: [pending] }), { status: 200 })
+    }
+    if (url.endsWith("/agents/runs/run-3/cancel") && init?.method === "POST") {
+      return new Response(JSON.stringify({ code: 200, data: cancelled }), { status: 200 })
+    }
+    if (url.endsWith("/agents/runs/run-3")) {
+      return new Response(JSON.stringify({ code: 200, data: pending }), { status: 200 })
+    }
+    throw new Error(`意外的请求：${url}`)
+  })
+  vi.stubGlobal("fetch", fetchMock)
+
+  render(<RunPanel sessionId="session-1" />)
+  await screen.findByText("待执行 · run-3")
+  fireEvent.click(screen.getByRole("button", { name: "取消运行" }))
+  await screen.findByText("已取消 · run-3")
+  expect(fetchMock.mock.calls.some(([url, init]) => String(url).endsWith("/agents/runs/run-3/cancel")
+    && init?.method === "POST")).toBe(true)
+})
+
 it("should_openAPinnedCitationThroughTheAuthenticatedRunApi", async () => {
   const run = {
     id: "run-3", sessionId: "session-1", agentId: "agent-1", knowledgeVersionId: "version-1",

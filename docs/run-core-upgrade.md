@@ -14,7 +14,10 @@ psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f AgentX/src/main/resources/db/migratio
 - `POST /api/agents/sessions/{sessionId}/runs`，请求体 `{"goal":"目标内容"}`。
 - `GET /api/agents/sessions/{sessionId}/runs`，读取会话运行列表。
 - `GET /api/agents/runs/{runId}`，读取运行及步骤详情。
+- `POST /api/agents/runs/{runId}/cancel`（或 `DELETE /api/agents/runs/{runId}`），由运行所有者取消未完成运行。
 
 提交目标后立即返回 `PENDING`。RabbitMQ 派发运行编号，工作者通过 PostgreSQL 的租约领取工作；启动时和定期扫描会重新派发漏发或租约过期的运行。重复消息不会覆盖已完成结果，浏览器刷新后从 `GET` 接口读取同一个运行。部署时先执行 SQL，再启动使用新版代码的服务。
+
+取消请求按运行所有者和未完成状态原子更新为 `CANCELLED`，同时关闭仍未完成的步骤并清理租约。后续队列消息不会再次领取该运行；已经领取的工作者也不能提交完成或失败结果。
 
 恢复集成测试使用专用 PostgreSQL 数据库和 RabbitMQ 实例。设置 `RUN_DELIVERY_INTEGRATION=true`，可用 `RUN_TEST_DB_URL` 与 `RUN_TEST_RABBIT_PORT` 指定地址，然后在 `AgentX` 运行 `./mvnw -Dtest=RunPostgresRabbitIntegrationTest test`。测试通过公开运行接口提交目标，经过真实数据库与 RabbitMQ，验证租约过期恢复、重复消息和两个工作者的竞争。

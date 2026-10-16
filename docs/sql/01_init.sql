@@ -1202,6 +1202,10 @@ CREATE TABLE IF NOT EXISTS public.agent_runs (
     user_id VARCHAR(64) NOT NULL,
     session_id VARCHAR(64) NOT NULL,
     agent_id VARCHAR(64) NOT NULL,
+    agent_version_id VARCHAR(36),
+    agent_version_number VARCHAR(20),
+    model_id VARCHAR(36),
+    model_connection_type VARCHAR(32),
     knowledge_version_id VARCHAR(64),
     goal TEXT NOT NULL,
     status VARCHAR(32) NOT NULL,
@@ -1221,6 +1225,11 @@ CREATE INDEX IF NOT EXISTS idx_agent_runs_knowledge_version
 CREATE INDEX IF NOT EXISTS idx_agent_runs_recovery
     ON public.agent_runs (status, lease_until, created_at)
     WHERE deleted_at IS NULL;
+
+COMMENT ON COLUMN public.agent_runs.agent_version_id IS '运行创建时固定的已发布 Agent 版本 ID';
+COMMENT ON COLUMN public.agent_runs.agent_version_number IS '运行创建时固定的 Agent 版本号';
+COMMENT ON COLUMN public.agent_runs.model_id IS '运行创建时固定的模型连接 ID';
+COMMENT ON COLUMN public.agent_runs.model_connection_type IS '运行创建时固定的模型连接协议类型';
 
 CREATE TABLE IF NOT EXISTS public.agent_run_steps (
     id VARCHAR(36) PRIMARY KEY,

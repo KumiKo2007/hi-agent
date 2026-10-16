@@ -28,4 +28,12 @@ public interface RunStepMapper extends BaseMapper<RunStepEntity> {
             WHERE run_id = #{runId} AND sequence_no = 1 AND deleted_at IS NULL
             """)
     int failFirstStep(@Param("runId") String runId, @Param("reason") String reason);
+
+    @Update("""
+            UPDATE agent_run_steps SET status = 'CANCELLED', result = NULL, error_message = '运行已取消',
+                updated_at = CURRENT_TIMESTAMP
+            WHERE run_id = #{runId} AND deleted_at IS NULL
+              AND status IN ('PENDING', 'RUNNING', 'WAITING_APPROVAL', 'WAITING_RECONCILIATION')
+            """)
+    int cancelOpenSteps(@Param("runId") String runId);
 }
