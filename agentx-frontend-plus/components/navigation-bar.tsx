@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { Database, FileText, Menu, Search, Settings, PenToolIcon as Tool, UploadCloud, LogOut, Wrench, Activity,Package,Tag } from "lucide-react"
+import { Database, FileText, Menu, Search, Settings, LogOut, Wrench, Activity,Package,Tag } from "lucide-react"
 import { toast } from "@/hooks/use-toast"
 
 import { cn } from "@/lib/utils"
@@ -64,7 +64,7 @@ export function NavigationBar() {
         } else {
  
         }
-      } catch (error) {
+      } catch {
  
       } finally {
         setLoading(false)
@@ -220,6 +220,12 @@ export function NavigationBar() {
                   <Link href="/settings/api-keys">
                     <Settings className="mr-2 h-4 w-4" />
                     API 密钥管理
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/settings/github">
+                    <Settings className="mr-2 h-4 w-4" />
+                    GitHub 连接
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>

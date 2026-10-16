@@ -105,6 +105,7 @@ services:
       
       # 安全配置
       JWT_SECRET: ${JWT_SECRET:-default_jwt_secret_please_change_in_production}
+      HI_AGENT_GITHUB_TOKEN_KEY: ${HI_AGENT_GITHUB_TOKEN_KEY:-}
       
       # 高可用网关配置
       HIGH_AVAILABILITY_ENABLED: ${HIGH_AVAILABILITY_ENABLED:-false}

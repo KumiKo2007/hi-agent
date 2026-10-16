@@ -1228,3 +1228,14 @@ CREATE TABLE IF NOT EXISTS public.agent_run_steps (
 );
 CREATE INDEX IF NOT EXISTS idx_agent_run_steps_run_sequence
     ON public.agent_run_steps (run_id, sequence_no);
+
+-- 使用者自己的 GitHub 连接。凭据密文由环境密钥保护，仓库范围由平台再次收紧。
+CREATE TABLE IF NOT EXISTS public.github_connections (
+    user_id VARCHAR(64) PRIMARY KEY,
+    github_user_id VARCHAR(64) NOT NULL,
+    github_login VARCHAR(255) NOT NULL,
+    encrypted_token TEXT NOT NULL,
+    repositories_json TEXT NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
