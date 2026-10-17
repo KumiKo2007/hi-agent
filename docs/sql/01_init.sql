@@ -1206,7 +1206,9 @@ CREATE TABLE IF NOT EXISTS public.agent_runs (
     agent_version_number VARCHAR(20),
     model_id VARCHAR(36),
     model_connection_type VARCHAR(32),
+    approval_policy VARCHAR(64) NOT NULL DEFAULT 'CREATOR_DEFAULT',
     knowledge_version_id VARCHAR(64),
+    target_repository VARCHAR(200),
     goal TEXT NOT NULL,
     status VARCHAR(32) NOT NULL,
     result TEXT,
@@ -1246,6 +1248,69 @@ CREATE TABLE IF NOT EXISTS public.agent_run_steps (
 );
 CREATE INDEX IF NOT EXISTS idx_agent_run_steps_run_sequence
     ON public.agent_run_steps (run_id, sequence_no);
+
+CREATE TABLE IF NOT EXISTS public.agent_run_approvals (
+    id VARCHAR(36) PRIMARY KEY,
+    run_id VARCHAR(36) NOT NULL UNIQUE,
+    service_id VARCHAR(64) NOT NULL,
+    action_name VARCHAR(255) NOT NULL,
+    action_description TEXT,
+    target_repository VARCHAR(255) NOT NULL,
+    arguments_json TEXT NOT NULL,
+    schema_json TEXT NOT NULL,
+    status VARCHAR(32) NOT NULL,
+    approval_source VARCHAR(32) NOT NULL DEFAULT 'USER',
+    decided_by VARCHAR(64),
+    decided_at TIMESTAMP,
+    external_resource_id TEXT,
+    reconciliation_state VARCHAR(32) NOT NULL DEFAULT 'NONE',
+    reconciliation_outcome VARCHAR(32),
+    reconciliation_reason TEXT,
+    reconciliation_evidence TEXT,
+    reconciliation_evidence_reference VARCHAR(512),
+    reconciliation_actor_id VARCHAR(64),
+    reconciliation_at TIMESTAMP,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_agent_run_approvals_run_status
+    ON public.agent_run_approvals (run_id, status);
+
+CREATE TABLE IF NOT EXISTS public.agent_run_reconciliations (
+    id VARCHAR(36) PRIMARY KEY,
+    run_id VARCHAR(36) NOT NULL,
+    approval_id VARCHAR(36) NOT NULL,
+    outcome VARCHAR(32) NOT NULL,
+    actor_id VARCHAR(64),
+    evidence TEXT NOT NULL,
+    evidence_reference VARCHAR(512),
+    external_resource_id TEXT,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_agent_run_reconciliations_approval_created
+    ON public.agent_run_reconciliations (approval_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS public.agent_run_timeline_events (
+    id VARCHAR(36) PRIMARY KEY,
+    event_order BIGINT GENERATED ALWAYS AS IDENTITY UNIQUE NOT NULL,
+    run_id VARCHAR(36) NOT NULL,
+    step_id VARCHAR(36),
+    event_type VARCHAR(48) NOT NULL,
+    event_status VARCHAR(48) NOT NULL,
+    safe_summary VARCHAR(512) NOT NULL,
+    details_json TEXT NOT NULL DEFAULT '{}',
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_agent_run_timeline_events_run_order
+    ON public.agent_run_timeline_events (run_id, event_order)
+    WHERE deleted_at IS NULL;
+COMMENT ON TABLE public.agent_run_timeline_events IS
+    'Append-only allowlisted owner timeline metadata; excludes prompts, credentials, raw tool arguments and outputs';
 
 -- 使用者自己的 GitHub 连接。凭据密文由环境密钥保护，仓库范围由平台再次收紧。
 CREATE TABLE IF NOT EXISTS public.github_connections (

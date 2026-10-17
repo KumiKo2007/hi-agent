@@ -12,6 +12,7 @@ import org.xhy.domain.tool.model.ToolEntity;
 import org.xhy.domain.tool.model.UserToolEntity;
 import org.xhy.domain.tool.model.config.ToolDefinition;
 import org.xhy.domain.tool.repository.ToolActionPolicyStore;
+import org.xhy.domain.tool.repository.AgentToolActionSelectionStore;
 import org.xhy.domain.tool.service.ToolDomainService;
 import org.xhy.domain.tool.service.UserToolDomainService;
 import org.xhy.infrastructure.exception.BusinessException;
@@ -25,13 +26,15 @@ public class ToolActionPolicyAppService {
     private final ToolDomainService services;
     private final ToolActionPolicyStore policies;
     private final McpClientFactory clients;
+    private final AgentToolActionSelectionStore selections;
 
     public ToolActionPolicyAppService(UserToolDomainService installedTools, ToolDomainService services,
-            ToolActionPolicyStore policies, McpClientFactory clients) {
+            ToolActionPolicyStore policies, McpClientFactory clients, AgentToolActionSelectionStore selections) {
         this.installedTools = installedTools;
         this.services = services;
         this.policies = policies;
         this.clients = clients;
+        this.selections = selections;
     }
 
     /** 使用者查看已安装 MCP 服务及其中每个动作的分类。 */
@@ -48,7 +51,8 @@ public class ToolActionPolicyAppService {
             ToolActionPolicy policy = policies.find(serviceId, definition.getName());
             result.add(new McpToolActionDTO(serviceId, installed.getMcpServerName(), definition.getName(),
                     definition.getDescription(), policy == null ? definition.getParameters() : policy.schema(),
-                    policy == null ? ToolActionClassification.WRITE_REQUIRES_APPROVAL : policy.classification()));
+                    policy == null ? ToolActionClassification.WRITE_REQUIRES_APPROVAL : policy.classification(),
+                    policy != null));
         }
         return result;
     }
@@ -64,7 +68,8 @@ public class ToolActionPolicyAppService {
             ToolActionPolicy policy = policies.find(serviceId, definition.getName());
             result.add(new McpToolActionDTO(serviceId, service.getMcpServerName(), definition.getName(),
                     definition.getDescription(), policy == null ? definition.getParameters() : policy.schema(),
-                    policy == null ? ToolActionClassification.WRITE_REQUIRES_APPROVAL : policy.classification()));
+                    policy == null ? ToolActionClassification.WRITE_REQUIRES_APPROVAL : policy.classification(),
+                    policy != null));
         }
         return result;
     }
@@ -91,9 +96,10 @@ public class ToolActionPolicyAppService {
         }
         ToolActionPolicy policy = new ToolActionPolicy(serviceId, actionName, classification, schema);
         policies.save(policy);
+        selections.revokePreauthorization(serviceId, actionName);
         ToolDefinition definition = service.getToolList().stream().filter(item -> actionName.equals(item.getName()))
                 .findFirst().orElseThrow();
         return new McpToolActionDTO(serviceId, service.getMcpServerName(), actionName, definition.getDescription(),
-                schema, classification);
+                schema, classification, true);
     }
 }

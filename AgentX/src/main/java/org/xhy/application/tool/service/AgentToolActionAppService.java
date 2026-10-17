@@ -7,6 +7,8 @@ import org.xhy.domain.agent.model.AgentEntity;
 import org.xhy.domain.agent.service.AgentDomainService;
 import org.xhy.domain.tool.model.UserToolEntity;
 import org.xhy.domain.tool.repository.AgentToolActionSelectionStore;
+import org.xhy.domain.tool.repository.ToolActionPolicyStore;
+import org.xhy.domain.tool.constant.ToolActionClassification;
 import org.xhy.domain.tool.service.UserToolDomainService;
 import org.xhy.infrastructure.exception.BusinessException;
 
@@ -16,12 +18,14 @@ public class AgentToolActionAppService {
     private final AgentDomainService agents;
     private final UserToolDomainService installedTools;
     private final AgentToolActionSelectionStore selections;
+    private final ToolActionPolicyStore policies;
 
     public AgentToolActionAppService(AgentDomainService agents, UserToolDomainService installedTools,
-            AgentToolActionSelectionStore selections) {
+            AgentToolActionSelectionStore selections, ToolActionPolicyStore policies) {
         this.agents = agents;
         this.installedTools = installedTools;
         this.selections = selections;
+        this.policies = policies;
     }
 
     /** 获取创建者为一个服务启用的动作名称。 */
@@ -43,6 +47,37 @@ public class AgentToolActionAppService {
         }
         selections.replace(agentId, serviceId, actionNames);
         return selections.list(agentId, serviceId);
+    }
+
+    /** Lists write actions the creator has allowed to execute without a run-time prompt. */
+    public List<String> listPreauthorized(String agentId, String serviceId, String userId) {
+        requireSelectedService(agentId, serviceId, userId);
+        return selections.preauthorized(agentId, serviceId);
+    }
+
+    /** Replaces creator preauthorizations for selected, explicitly classified write actions. */
+    public List<String> replacePreauthorized(String agentId, String serviceId, List<String> actionNames,
+            String userId) {
+        UserToolEntity installed = requireSelectedService(agentId, serviceId, userId);
+        List<String> requested = actionNames == null ? List.of() : actionNames;
+        if (requested.stream().anyMatch(name -> name == null || name.isBlank())
+                || requested.size() != requested.stream().distinct().count()) {
+            throw new BusinessException("包含重复或无效的预授权动作");
+        }
+        for (String actionName : requested) {
+            boolean enabled = installed.getToolList() != null && installed.getToolList().stream()
+                    .anyMatch(definition -> actionName.equals(definition.getName())
+                            && !Boolean.FALSE.equals(definition.getEnabled()));
+            if (!enabled || !selections.contains(agentId, serviceId, actionName)) {
+                throw new BusinessException("只能预授权 Agent 已启用的 MCP 动作");
+            }
+            var policy = policies.find(serviceId, actionName);
+            if (policy == null || policy.classification() != ToolActionClassification.WRITE_REQUIRES_APPROVAL) {
+                throw new BusinessException("只能预授权已明确分类的外部写动作");
+            }
+        }
+        selections.replacePreauthorized(agentId, serviceId, requested);
+        return selections.preauthorized(agentId, serviceId);
     }
 
     private UserToolEntity requireSelectedService(String agentId, String serviceId, String userId) {

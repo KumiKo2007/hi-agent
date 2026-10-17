@@ -30,9 +30,15 @@ public class RunEntity extends BaseEntity {
     private String modelId;
     @TableField("model_connection_type")
     private String modelConnectionType;
+    /** The run can tighten the creator's action preauthorizations, never loosen them. */
+    @TableField("approval_policy")
+    private String approvalPolicy = RunApprovalPolicy.CREATOR_DEFAULT.name();
     /** The ready knowledge snapshot selected when this run was created. */
     @TableField("knowledge_version_id")
     private String knowledgeVersionId;
+    /** Target repository selected and authorized when the run was created. */
+    @TableField("target_repository")
+    private String targetRepository;
     @TableField("goal")
     private String goal;
     @TableField("status")
@@ -75,6 +81,16 @@ public class RunEntity extends BaseEntity {
 
     public void start() {
         status = "RUNNING";
+        updatedAt = LocalDateTime.now();
+    }
+
+    public void waitForApproval() {
+        status = "WAITING_APPROVAL";
+        updatedAt = LocalDateTime.now();
+    }
+
+    public void waitForReconciliation() {
+        status = "WAITING_RECONCILIATION";
         updatedAt = LocalDateTime.now();
     }
 
@@ -147,12 +163,26 @@ public class RunEntity extends BaseEntity {
         this.modelConnectionType = modelConnectionType;
     }
 
+    public String getApprovalPolicy() {
+        return approvalPolicy == null ? RunApprovalPolicy.CREATOR_DEFAULT.name() : approvalPolicy;
+    }
+
+    public void setApprovalPolicy(String approvalPolicy) {
+        this.approvalPolicy = RunApprovalPolicy.fromValue(approvalPolicy).name();
+    }
+
     public String getKnowledgeVersionId() {
         return knowledgeVersionId;
     }
 
     public void setKnowledgeVersionId(String knowledgeVersionId) {
         this.knowledgeVersionId = knowledgeVersionId;
+    }
+    public String getTargetRepository() {
+        return targetRepository;
+    }
+    public void setTargetRepository(String targetRepository) {
+        this.targetRepository = targetRepository;
     }
     public String getGoal() {
         return goal;

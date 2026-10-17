@@ -13,16 +13,18 @@ import org.xhy.infrastructure.exception.BusinessException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 /** Searches only immutable {@code rag_version_documents} rows. The original dataset and live RAG search are
  * intentionally outside this boundary so an in-flight run cannot observe a later upload. */
 @Service
-public class KnowledgeSnapshotRetrievalService {
+public class KnowledgeSnapshotRetrievalService implements RunKnowledgeRetriever {
 
     private static final int MAX_CITATIONS = 5;
+    private static final int MIN_DISTINCTIVE_TERMS = 2;
 
     private final RagVersionRepository versions;
     private final RagVersionDocumentRepository documents;
@@ -36,6 +38,7 @@ public class KnowledgeSnapshotRetrievalService {
     }
 
     /** Query one run-pinned version. The owner and ready flag are checked on every read, including citation reads. */
+    @Override
     public KnowledgeRetrievalResult retrieve(String knowledgeVersionId, String query, String userId) {
         RagVersionEntity version = findReadyVersion(knowledgeVersionId, userId);
         if (query == null || query.isBlank()) {
@@ -50,9 +53,13 @@ public class KnowledgeSnapshotRetrievalService {
         }
 
         Map<String, RagVersionFileEntity> snapshotFiles = loadFiles(snapshotDocuments);
+        Set<String> queryTerms = KnowledgeEvidencePolicy.distinctiveTerms(query);
+        if (queryTerms.size() < MIN_DISTINCTIVE_TERMS) {
+            return insufficient(knowledgeVersionId, "目标缺少足够具体的主题词，资料依据不足，不能自动发布");
+        }
         List<RankedDocument> ranked = new ArrayList<>();
         for (RagVersionDocumentEntity document : snapshotDocuments) {
-            int score = score(document.getContent(), query);
+            int score = score(document.getContent(), queryTerms);
             if (score > 0) {
                 ranked.add(new RankedDocument(document, score));
             }
@@ -60,10 +67,23 @@ public class KnowledgeSnapshotRetrievalService {
         ranked.sort(Comparator.comparingInt(RankedDocument::score).reversed()
                 .thenComparing(item -> item.document().getId(), Comparator.nullsLast(String::compareTo)));
 
-        List<KnowledgeCitation> citations = ranked.stream().limit(MAX_CITATIONS).map(
+        LinkedHashSet<RankedDocument> selected = new LinkedHashSet<>();
+        for (Set<String> topic : KnowledgeEvidencePolicy.topics(query)) {
+            if (selected.size() >= MAX_CITATIONS) {
+                break;
+            }
+            ranked.stream().filter(item -> supportsTopic(item.document().getContent(), topic)).findFirst()
+                    .ifPresent(selected::add);
+        }
+        ranked.stream().filter(item -> selected.size() < MAX_CITATIONS).forEach(item -> {
+            if (selected.size() < MAX_CITATIONS) {
+                selected.add(item);
+            }
+        });
+        List<KnowledgeCitation> citations = selected.stream().map(
                 item -> toCitation(version, item.document(), snapshotFiles.get(item.document().getRagVersionFileId())))
                 .toList();
-        if (citations.isEmpty()) {
+        if (!KnowledgeEvidencePolicy.supportsQuery(query, citations)) {
             return insufficient(knowledgeVersionId, "固定知识版本中没有支持该目标的资料，资料依据不足，不能自动发布");
         }
         return new KnowledgeRetrievalResult(knowledgeVersionId, true, "已从固定知识版本检索到依据", citations);
@@ -123,23 +143,18 @@ public class KnowledgeSnapshotRetrievalService {
         return citation;
     }
 
-    private int score(String content, String query) {
+    private int score(String content, Set<String> queryTerms) {
         if (content == null || content.isBlank()) {
             return 0;
         }
-        String normalizedContent = content.toLowerCase(Locale.ROOT);
-        String normalizedQuery = query.trim().toLowerCase(Locale.ROOT);
-        if (normalizedContent.contains(normalizedQuery)) {
-            return 100 + normalizedQuery.length();
-        }
-        String[] terms = normalizedQuery.split("[^\\p{L}\\p{N}_-]+");
-        int matched = 0;
-        for (String term : terms) {
-            if (!term.isBlank() && normalizedContent.contains(term)) {
-                matched++;
-            }
-        }
-        return matched;
+        Set<String> documentTerms = KnowledgeEvidencePolicy.distinctiveTerms(content);
+        return (int) queryTerms.stream().filter(documentTerms::contains).count();
+    }
+
+    private boolean supportsTopic(String content, Set<String> topic) {
+        Set<String> documentTerms = KnowledgeEvidencePolicy.distinctiveTerms(content);
+        long supported = topic.stream().filter(documentTerms::contains).count();
+        return supported >= KnowledgeEvidencePolicy.minimumCoverage(topic.size());
     }
 
     private KnowledgeRetrievalResult insufficient(String knowledgeVersionId, String message) {

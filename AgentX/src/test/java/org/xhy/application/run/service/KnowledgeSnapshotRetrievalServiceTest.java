@@ -9,33 +9,25 @@ import org.xhy.domain.rag.repository.RagVersionFileRepository;
 import org.xhy.domain.rag.repository.RagVersionRepository;
 import org.xhy.domain.run.model.RunEntity;
 
+import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
 import java.util.List;
+import java.util.function.BiFunction;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 /** Frozen knowledge retrieval is an observable run boundary, rather than a live RAG query. */
 class KnowledgeSnapshotRetrievalServiceTest {
 
     @Test
     void retrievesOnlyThePinnedVersionAndReturnsOpenableCitation() {
-        RagVersionRepository versions = mock(RagVersionRepository.class);
-        RagVersionDocumentRepository documents = mock(RagVersionDocumentRepository.class);
-        RagVersionFileRepository files = mock(RagVersionFileRepository.class);
-
         RagVersionEntity version = readyVersion("version-1", "dataset-1", "owner");
         RagVersionFileEntity file = versionFile("version-file-1", "design.md");
         RagVersionDocumentEntity document = versionDocument("version-1", "version-file-1", "doc-1",
                 "The gateway retries failed requests.", 7);
-        when(versions.selectOne(any())).thenReturn(version);
-        when(documents.selectList(any())).thenReturn(List.of(document));
-        when(files.selectList(any())).thenReturn(List.of(file));
-
-        KnowledgeSnapshotRetrievalService service = new KnowledgeSnapshotRetrievalService(versions, documents, files);
+        KnowledgeSnapshotRetrievalService service = retrievalService(version, List.of(document), List.of(file));
 
         KnowledgeRetrievalResult result = service.retrieve("version-1", "gateway retries", "owner");
 
@@ -55,16 +47,9 @@ class KnowledgeSnapshotRetrievalServiceTest {
 
     @Test
     void returnsExplicitInsufficientEvidenceWithoutCitations() {
-        RagVersionRepository versions = mock(RagVersionRepository.class);
-        RagVersionDocumentRepository documents = mock(RagVersionDocumentRepository.class);
-        RagVersionFileRepository files = mock(RagVersionFileRepository.class);
-
-        when(versions.selectOne(any())).thenReturn(readyVersion("version-1", "dataset-1", "owner"));
-        when(documents.selectList(any())).thenReturn(
-                List.of(versionDocument("version-1", "file-1", "doc-1", "Only unrelated project information.", 1)));
-        when(files.selectList(any())).thenReturn(List.of(versionFile("file-1", "README.md")));
-
-        KnowledgeSnapshotRetrievalService service = new KnowledgeSnapshotRetrievalService(versions, documents, files);
+        KnowledgeSnapshotRetrievalService service = retrievalService(readyVersion("version-1", "dataset-1", "owner"),
+                List.of(versionDocument("version-1", "file-1", "doc-1", "Only unrelated project information.", 1)),
+                List.of(versionFile("file-1", "README.md")));
 
         KnowledgeRetrievalResult result = service.retrieve("version-1", "database migration", "owner");
 
@@ -72,6 +57,88 @@ class KnowledgeSnapshotRetrievalServiceTest {
         assertFalse(result.canPublish());
         assertTrue(result.getCitations().isEmpty());
         assertTrue(result.getMessage().contains("不足"));
+    }
+
+    @Test
+    void commonIssueRequestWordsAloneDoNotCountAsEvidence() {
+        KnowledgeSnapshotRetrievalService service = retrievalService(readyVersion("version-1", "dataset-1", "owner"),
+                List.of(versionDocument("version-1", "file-1", "doc-1",
+                        "Please create an issue for the project and add it to the repository.", 1)),
+                List.of(versionFile("file-1", "README.md")));
+
+        KnowledgeRetrievalResult result = service.retrieve("version-1", "Create an issue for the project", "owner");
+
+        assertFalse(result.hasEvidence());
+        assertFalse(result.canPublish());
+        assertTrue(result.getCitations().isEmpty());
+    }
+
+    @Test
+    void oneTopicWordMatchIsNotEnoughToCiteOrPublish() {
+        KnowledgeSnapshotRetrievalService service = retrievalService(readyVersion("version-1", "dataset-1", "owner"),
+                List.of(versionDocument("version-1", "file-1", "doc-1",
+                        "The gateway is a shared entry point for services.", 1)),
+                List.of(versionFile("file-1", "architecture.md")));
+
+        KnowledgeRetrievalResult result = service.retrieve("version-1", "gateway retries", "owner");
+
+        assertFalse(result.hasEvidence());
+        assertFalse(result.canPublish());
+        assertTrue(result.getCitations().isEmpty());
+    }
+
+    @Test
+    void aFirstTopicMatchCannotAuthorizeAUnsupportedMultiTopicGoal() {
+        KnowledgeSnapshotRetrievalService service = retrievalService(readyVersion("version-1", "dataset-1", "owner"),
+                List.of(versionDocument("version-1", "file-1", "doc-1",
+                        "The database migration follows the existing backup procedure.", 1)),
+                List.of(versionFile("file-1", "migration.md")));
+
+        KnowledgeRetrievalResult result = service.retrieve("version-1",
+                "database migration, token rotation, recovery", "owner");
+
+        assertFalse(result.hasEvidence());
+        assertFalse(result.canPublish());
+        assertTrue(result.getCitations().isEmpty());
+    }
+
+    @Test
+    void citesMultiTopicGoalWhenThePinnedSourceSupportsEveryTopic() {
+        KnowledgeSnapshotRetrievalService service = retrievalService(readyVersion("version-1", "dataset-1", "owner"),
+                List.of(versionDocument("version-1", "file-1", "doc-1",
+                        "The database migration coordinates token rotation and recovery.", 1)),
+                List.of(versionFile("file-1", "migration.md")));
+
+        KnowledgeRetrievalResult result = service.retrieve("version-1",
+                "database migration, token rotation, recovery", "owner");
+
+        assertTrue(result.canPublish());
+        assertEquals(1, result.getCitations().size());
+        assertEquals("The database migration coordinates token rotation and recovery.",
+                result.getCitations().get(0).getContent());
+    }
+
+    @Test
+    void doesNotExceedFiveCitationsWhenTheGoalHasMoreThanFiveDistinctTopics() {
+        RagVersionEntity version = readyVersion("version-1", "dataset-1", "owner");
+        List<String> topicEvidence = List.of(
+                "The database migration has a rollback plan.",
+                "Token rotation follows the security checklist.",
+                "Session recovery restores the account state.",
+                "Cache refresh invalidates stale entries.",
+                "Queue restart resumes pending jobs.",
+                "Permission audit records role changes.");
+        List<RagVersionDocumentEntity> documents = topicEvidence.stream().map((content) ->
+                versionDocument("version-1", "file-1", "doc-" + content.hashCode(), content, 1)).toList();
+        KnowledgeSnapshotRetrievalService service = retrievalService(version, documents,
+                List.of(versionFile("file-1", "operations.md")));
+
+        KnowledgeRetrievalResult result = service.retrieve("version-1",
+                "database migration, token rotation, session recovery, cache refresh, queue restart, permission audit",
+                "owner");
+
+        assertFalse(result.canPublish());
+        assertTrue(result.getCitations().isEmpty());
     }
 
     @Test
@@ -113,6 +180,32 @@ class KnowledgeSnapshotRetrievalServiceTest {
         document.setContent(content);
         document.setPage(page);
         return document;
+    }
+
+    private static KnowledgeSnapshotRetrievalService retrievalService(RagVersionEntity version,
+            List<RagVersionDocumentEntity> snapshotDocuments, List<RagVersionFileEntity> snapshotFiles) {
+        RagVersionRepository versionRepository = proxy(RagVersionRepository.class,
+                (method, args) -> method.getName().equals("selectOne") ? version : defaultValue(method.getReturnType()));
+        RagVersionDocumentRepository documentRepository = proxy(RagVersionDocumentRepository.class,
+                (method, args) -> method.getName().equals("selectList") ? snapshotDocuments
+                        : defaultValue(method.getReturnType()));
+        RagVersionFileRepository fileRepository = proxy(RagVersionFileRepository.class,
+                (method, args) -> method.getName().equals("selectList") ? snapshotFiles
+                        : defaultValue(method.getReturnType()));
+        return new KnowledgeSnapshotRetrievalService(versionRepository, documentRepository, fileRepository);
+    }
+
+    private static <T> T proxy(Class<T> type, BiFunction<Method, Object[], Object> handler) {
+        return type.cast(Proxy.newProxyInstance(type.getClassLoader(), new Class<?>[] { type },
+                (ignored, method, args) -> handler.apply(method, args)));
+    }
+
+    private static Object defaultValue(Class<?> type) {
+        if (!type.isPrimitive()) return null;
+        if (type == boolean.class) return false;
+        if (type == int.class) return 0;
+        if (type == long.class) return 0L;
+        return null;
     }
 
 }

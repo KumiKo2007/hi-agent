@@ -3,15 +3,21 @@ package org.xhy.application.tool.service.state.impl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xhy.application.container.service.ReviewContainerService;
+import org.xhy.application.tool.service.McpEndpoint;
+import org.xhy.application.tool.service.McpTransportClientFactory;
 import org.xhy.application.tool.service.state.AppToolStateProcessor;
+import org.xhy.domain.tool.constant.McpTransportType;
 import org.xhy.domain.tool.constant.ToolStatus;
 import org.xhy.domain.tool.model.ToolEntity;
 import org.xhy.domain.tool.model.config.ToolDefinition;
+import org.xhy.domain.tool.model.config.ToolSpecificationConverter;
 import org.xhy.infrastructure.exception.BusinessException;
 import org.xhy.infrastructure.mcp_gateway.MCPGatewayService;
 
+import java.net.URI;
 import java.util.List;
 import java.util.Map;
+import dev.langchain4j.mcp.client.McpClient;
 
 /** 应用层获取工具列表处理器
  * 
@@ -22,15 +28,17 @@ public class AppFetchingToolsProcessor implements AppToolStateProcessor {
 
     private final MCPGatewayService mcpGatewayService;
     private final ReviewContainerService reviewContainerService;
+    private final McpTransportClientFactory mcpClients;
 
     /** 构造函数，注入依赖服务
      * 
      * @param mcpGatewayService MCP网关服务
      * @param reviewContainerService 审核容器服务 */
     public AppFetchingToolsProcessor(MCPGatewayService mcpGatewayService,
-            ReviewContainerService reviewContainerService) {
+            ReviewContainerService reviewContainerService, McpTransportClientFactory mcpClients) {
         this.mcpGatewayService = mcpGatewayService;
         this.reviewContainerService = reviewContainerService;
+        this.mcpClients = mcpClients;
     }
 
     @Override
@@ -76,9 +84,14 @@ public class AppFetchingToolsProcessor implements AppToolStateProcessor {
             logger.info("从审核容器 {}:{} 获取工具 {} 的列表", reviewConnection.getIpAddress(), reviewConnection.getPort(),
                     toolName);
 
-            // 调用MCPGatewayService从审核容器获取工具列表
-            List<ToolDefinition> toolDefinitions = mcpGatewayService.listToolsFromReviewContainer(toolName,
-                    reviewConnection.getIpAddress(), reviewConnection.getPort());
+            McpTransportType transportType = tool.getTransportType() == null ? McpTransportType.LEGACY_SSE
+                    : tool.getTransportType();
+            String endpointUrl = mcpGatewayService.buildReviewContainerUrl(toolName,
+                    reviewConnection.getIpAddress(), reviewConnection.getPort(), transportType);
+            List<ToolDefinition> toolDefinitions;
+            try (McpClient client = mcpClients.open(new McpEndpoint(transportType, URI.create(endpointUrl)))) {
+                toolDefinitions = ToolSpecificationConverter.convert(client.listTools());
+            }
 
             if (toolDefinitions != null && !toolDefinitions.isEmpty()) {
                 logger.info("从审核容器获取工具列表成功，数量: {}, 工具: {}", toolDefinitions.size(), toolName);
@@ -98,8 +111,8 @@ public class AppFetchingToolsProcessor implements AppToolStateProcessor {
             logger.error("从审核容器获取工具列表失败 {} (ID: {}): {}", tool.getName(), tool.getId(), e.getMessage(), e);
             throw e; // 重新抛出BusinessException
         } catch (Exception e) {
-            logger.error("从审核容器获取工具列表 {} (ID: {}) 过程中发生意外错误: {}", tool.getName(), tool.getId(), e.getMessage(), e);
-            throw new BusinessException("从审核容器获取工具列表过程中发生意外错误: " + e.getMessage(), e);
+            logger.error("从审核容器获取工具列表失败: toolId={}, causeType={}", tool.getId(), e.getClass().getSimpleName());
+            throw new BusinessException("从审核容器获取工具列表过程中发生意外错误");
         }
     }
 

@@ -25,6 +25,24 @@ export async function replaceAgentToolActions(
   )
 }
 
+/** Creator preauthorizations apply only to explicitly classified, selected write actions. */
+export async function getAgentActionPreauthorizations(agentId: string, serviceId: string): Promise<ApiResponse<string[]>> {
+  return httpClient.get(
+    `/agents/${encodeURIComponent(agentId)}/tool-services/${encodeURIComponent(serviceId)}/preauthorizations`
+  )
+}
+
+export async function replaceAgentActionPreauthorizations(
+  agentId: string,
+  serviceId: string,
+  actionNames: string[]
+): Promise<ApiResponse<string[]>> {
+  return httpClient.put(
+    `/agents/${encodeURIComponent(agentId)}/tool-services/${encodeURIComponent(serviceId)}/preauthorizations`,
+    { actionNames }
+  )
+}
+
 // 获取工具市场列表
 export async function getMarketTools(params?: GetMarketToolsParams): Promise<ApiResponse<any>> {
   try {

@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/form"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { toast } from "@/hooks/use-toast"
 import { z } from "zod"
@@ -37,6 +38,7 @@ const formSchema = z.object({
   uploadUrl: z.string().url("请输入有效的URL"),
   labels: z.array(z.string()).min(1, "请输入至少一个标签").max(5, "最多5个标签"),
   installCommand: z.string().min(1, "请输入安装命令"),
+  transportType: z.enum(["STREAMABLE_HTTP", "LEGACY_SSE"]),
   icon: z.string().optional() // 改为字符串URL类型
 });
 
@@ -68,7 +70,8 @@ export default function EditToolPage() {
       description: "",
       uploadUrl: "",
       labels: [],
-      installCommand: ""
+      installCommand: "",
+      transportType: "STREAMABLE_HTTP"
     }
   });
 
@@ -93,6 +96,7 @@ export default function EditToolPage() {
             installCommand: typeof (tool as any).installCommand === 'object' 
               ? JSON.stringify((tool as any).installCommand, null, 2) 
               : ((tool as any).installCommand || ""),
+            transportType: tool.transportType || "LEGACY_SSE",
           });
           
           // 如果有图标，设置图标预览
@@ -193,6 +197,7 @@ export default function EditToolPage() {
         uploadUrl: values.uploadUrl,
         labels: values.labels,
         installCommand: installCommandData,
+        transportType: values.transportType,
         icon: values.icon,
       };
       
@@ -484,6 +489,31 @@ export default function EditToolPage() {
                         </FormItem>
                       )}
                     />
+
+                    <FormField
+                      control={form.control}
+                      name="transportType"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>MCP 传输方式</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl>
+                              <SelectTrigger aria-label="MCP 传输方式">
+                                <SelectValue placeholder="选择传输方式" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="STREAMABLE_HTTP">Streamable HTTP（当前）</SelectItem>
+                              <SelectItem value="LEGACY_SSE">Legacy SSE（迁移兼容）</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormDescription>
+                            更改传输方式后会按所选传输方式重新验证 MCP 服务。
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                     
                     <FormField
                       control={form.control}
@@ -709,4 +739,4 @@ export default function EditToolPage() {
       </Form>
     </div>
   );
-} 
+}

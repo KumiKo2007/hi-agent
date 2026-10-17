@@ -77,9 +77,15 @@ class ToolBrokerTest {
         TestMcpClient changed = new TestMcpClient("search_docs",
                 JsonObjectSchema.builder().addStringProperty("owner").required("owner").build());
         ToolBroker changedBroker = broker(action(ToolActionClassification.READ_ONLY, SCHEMA), changed);
-        assertThrows(BusinessException.class, () -> changedBroker.executeReadOnly(agent(), "user-1", "service-1",
-                "search_docs", "{\"query\":\"release\"}"));
+        assertThrows(McpSchemaMismatchException.class, () -> changedBroker.executeReadOnly(agent(), "user-1",
+                "service-1", "search_docs", "{\"query\":\"release\"}"));
         assertEquals(0, changed.calls.get());
+
+        TestMcpClient missing = new TestMcpClient("renamed_search", ISSUE_SCHEMA);
+        ToolBroker missingBroker = broker(action(ToolActionClassification.READ_ONLY, SCHEMA), missing);
+        assertThrows(McpSchemaMismatchException.class, () -> missingBroker.executeReadOnly(agent(), "user-1",
+                "service-1", "search_docs", "{\"query\":\"release\"}"));
+        assertEquals(0, missing.calls.get());
     }
 
     private static ToolBroker broker(RegisteredToolAction action, TestMcpClient client) {

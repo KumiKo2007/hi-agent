@@ -37,6 +37,10 @@ import org.xhy.domain.conversation.model.SessionEntity;
 import org.xhy.domain.conversation.service.SessionDomainService;
 import org.xhy.domain.run.constant.RunQueueNames;
 import org.xhy.domain.run.repository.RunStore;
+import org.xhy.domain.run.model.RunEntity;
+import org.xhy.domain.run.model.RunApprovalDraft;
+import org.xhy.domain.run.model.RunApprovalEntity;
+import org.xhy.domain.run.model.RunStepEntity;
 import org.xhy.infrastructure.auth.UserContext;
 import org.xhy.infrastructure.mq.rabbit.RabbitRunDispatch;
 import org.xhy.interfaces.api.portal.agent.PortalAgentRunController;
@@ -45,13 +49,17 @@ import javax.sql.DataSource;
 import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.FutureTask;
+import java.util.concurrent.CyclicBarrier;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -60,6 +68,20 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 /** 在可用的 PostgreSQL/RabbitMQ 环境中检验公开 HTTP 到真实持久化和派发的路径。 */
 @EnabledIfEnvironmentVariable(named = "RUN_DELIVERY_INTEGRATION", matches = "true")
 class RunPostgresRabbitIntegrationTest {
+    static final List<String> RUN_MIGRATION_RESOURCES = List.of(
+            "V20261015001__create_agent_runs.sql",
+            "V20261015002__create_tool_action_policies.sql",
+            "V20261015004__run_delivery_lease.sql",
+            "V20261016001__pin_run_agent_version.sql",
+            "V20261016008__pin_run_knowledge_version.sql",
+            "V20261017002__persist_run_approvals.sql",
+            "V20261017003__add_creator_approval_policies.sql",
+            "V20261017004__persist_approved_external_resource.sql",
+            "V20261017005__audit_run_reconciliation.sql",
+            "V20261017006__add_reconciliation_evidence_references.sql",
+            "V20261017007__pin_run_target_repository.sql",
+            "V20261017008__add_run_timeline_events.sql");
+
     private final ObjectMapper json = new ObjectMapper();
 
     @AfterEach
@@ -166,6 +188,74 @@ class RunPostgresRabbitIntegrationTest {
         }
     }
 
+    @Test
+    void beginApprovalAndCancellationSerializeAndPersistedExternalResultsCannotBeCancelled() throws Exception {
+        try (AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext(StoreConfig.class)) {
+            DataSource dataSource = context.getBean(DataSource.class);
+            createSchema(dataSource);
+            RunStore store = context.getBean(RunStore.class);
+
+            RunEntity racingRun = approvedPendingRun(store);
+            String racingApprovalId = store.findApprovalForRun(racingRun.getId()).getId();
+            try (Connection lock = dataSource.getConnection();
+                    PreparedStatement lockRun = lock
+                            .prepareStatement("SELECT id FROM agent_runs WHERE id = ? FOR UPDATE")) {
+                lock.setAutoCommit(false);
+                lockRun.setString(1, racingRun.getId());
+                lockRun.executeQuery().close();
+                CyclicBarrier startTogether = new CyclicBarrier(3);
+                FutureTask<Boolean> begin = new FutureTask<>(() -> {
+                    startTogether.await();
+                    return store.beginApprovedAction(racingRun.getId(), "approved-worker", racingApprovalId);
+                });
+                FutureTask<Boolean> cancel = new FutureTask<>(() -> {
+                    startTogether.await();
+                    return store.cancelOwned(racingRun.getId(), "owner");
+                });
+                Thread beginThread = new Thread(begin, "begin-approved-action-test");
+                Thread cancelThread = new Thread(cancel, "cancel-approved-run-test");
+                beginThread.start();
+                cancelThread.start();
+                startTogether.await();
+                lock.commit();
+
+                boolean began = begin.get(10, TimeUnit.SECONDS);
+                boolean cancelled = cancel.get(10, TimeUnit.SECONDS);
+                assertFalse(began && cancelled, "cancellation and external action start must not both win");
+                assertTrue(began || cancelled, "one serialized transition should win");
+            }
+
+            RunEntity persistedRun = approvedPendingRun(store);
+            String persistedApprovalId = store.findApprovalForRun(persistedRun.getId()).getId();
+            assertTrue(store.beginApprovedAction(persistedRun.getId(), "approved-worker", persistedApprovalId));
+            assertTrue(store.recordApprovedActionResult(persistedRun.getId(), "approved-worker", persistedApprovalId,
+                    "issue-42"));
+            assertFalse(store.cancelOwned(persistedRun.getId(), "owner"));
+            assertEquals("RUNNING", store.findOwned(persistedRun.getId(), "owner").getStatus());
+            assertEquals("EXECUTED", store.findApprovalForRun(persistedRun.getId()).getStatus());
+
+            RunEntity unresolvedRun = approvedPendingRun(store);
+            String unresolvedApprovalId = store.findApprovalForRun(unresolvedRun.getId()).getId();
+            assertTrue(store.beginApprovedAction(unresolvedRun.getId(), "approved-worker", unresolvedApprovalId));
+            assertTrue(store.waitForReconciliation(unresolvedRun.getId(), "approved-worker"));
+            assertFalse(store.cancelOwned(unresolvedRun.getId(), "owner"));
+            assertEquals("WAITING_RECONCILIATION", store.findOwned(unresolvedRun.getId(), "owner").getStatus());
+            assertEquals("RECONCILIATION_REQUIRED", store.findApprovalForRun(unresolvedRun.getId()).getStatus());
+        }
+    }
+
+    private RunEntity approvedPendingRun(RunStore store) {
+        RunEntity run = RunEntity.create("owner", "session-approval", "agent-approval", "Create issue");
+        RunApprovalEntity approval = RunApprovalEntity.create(run.getId(), new RunApprovalDraft("service-1",
+                "create_issue", "Create issue", "owner/repo", "{}", Map.of("type", "object")));
+        store.createRunWithStep(run, RunStepEntity.modelCall(run.getId()));
+        assertTrue(store.claim(run.getId(), "initial-worker", 90));
+        assertTrue(store.requestApproval(run.getId(), "initial-worker", approval));
+        assertTrue(store.decideApproval(run.getId(), approval.getId(), "owner", true));
+        assertTrue(store.claim(run.getId(), "approved-worker", 90));
+        return run;
+    }
+
     private CachingConnectionFactory rabbitFactory() {
         CachingConnectionFactory factory = new CachingConnectionFactory("localhost",
                 Integer.parseInt(System.getenv().getOrDefault("RUN_TEST_RABBIT_PORT", "55672")));
@@ -176,12 +266,10 @@ class RunPostgresRabbitIntegrationTest {
 
     private void createSchema(DataSource dataSource) throws Exception {
         try (Connection connection = dataSource.getConnection()) {
-            ScriptUtils.executeSqlScript(connection,
-                    new ClassPathResource("db/migration/V20261015001__create_agent_runs.sql"));
-            ScriptUtils.executeSqlScript(connection,
-                    new ClassPathResource("db/migration/V20261015004__run_delivery_lease.sql"));
-            ScriptUtils.executeSqlScript(connection,
-                    new ClassPathResource("db/migration/V20261016001__pin_run_agent_version.sql"));
+            for (String migration : RUN_MIGRATION_RESOURCES) {
+                ScriptUtils.executeSqlScript(connection,
+                        new ClassPathResource("db/migration/" + migration));
+            }
         }
     }
 
@@ -235,6 +323,8 @@ class RunPostgresRabbitIntegrationTest {
             GlobalConfigUtils.setGlobalConfig(configuration, global);
             configuration.addMapper(RunMapper.class);
             configuration.addMapper(RunStepMapper.class);
+            configuration.addMapper(RunApprovalMapper.class);
+            configuration.addMapper(RunReconciliationMapper.class);
             MybatisSqlSessionFactoryBean factory = new MybatisSqlSessionFactoryBean();
             factory.setDataSource(dataSource);
             factory.setConfiguration(configuration);
@@ -252,8 +342,19 @@ class RunPostgresRabbitIntegrationTest {
         }
 
         @Bean
-        RunStore runStore(RunMapper runs, RunStepMapper steps) {
-            return new MyBatisRunStore(runs, steps);
+        RunApprovalMapper approvalMapper(SqlSessionFactory sessions) {
+            return new SqlSessionTemplate(sessions).getMapper(RunApprovalMapper.class);
+        }
+
+        @Bean
+        RunReconciliationMapper reconciliationMapper(SqlSessionFactory sessions) {
+            return new SqlSessionTemplate(sessions).getMapper(RunReconciliationMapper.class);
+        }
+
+        @Bean
+        RunStore runStore(RunMapper runs, RunStepMapper steps, RunApprovalMapper approvals,
+                RunReconciliationMapper reconciliations) {
+            return new MyBatisRunStore(runs, steps, approvals, reconciliations);
         }
     }
 }

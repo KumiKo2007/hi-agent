@@ -178,6 +178,7 @@ cd deploy && docker compose up -d --build
 
 ## 📖 更多文档
 
+- [首阶段本地启动、升级与 GitHub Issue 验收](docs/agent-platform-local-acceptance.md)
 - [对话回归基线与本地测试命令](docs/testing-regression-baseline.md)
 - [知识库资料处理与可检索版本](docs/knowledge-readiness.md)
 

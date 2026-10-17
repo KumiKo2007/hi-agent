@@ -8,10 +8,11 @@
     "build": "next build",
     "start": "next start",
     "test:chat": "vitest run tests/chat-panel.test.tsx",
-    "test:runs": "vitest run tests/run-panel.test.tsx",
+    "test:runs": "vitest run tests/run-panel.test.tsx tests/run-reconciliation-panel.test.tsx",
     "test:knowledge": "vitest run tests/knowledge-readiness.test.tsx",
     "lint": "node scripts/check-lint.mjs",
-    "lint:strict": "next lint"
+    "lint:strict": "next lint",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@hello-pangea/dnd": "^18.0.1",
@@ -78,6 +79,7 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@playwright/test": "^1.64.0",
     "@testing-library/dom": "10.4.0",
     "@testing-library/react": "16.2.0",
     "@types/node": "^22",

@@ -311,7 +311,8 @@ export default function WorkspacePage() {
                   onToggleScheduledTaskPanel={() => setShowScheduledTaskPanel(!showScheduledTaskPanel)}
                   multiModal={multiModal}
                 />
-              ) : <RunPanel sessionId={selectedConversationId} />}
+              ) : <RunPanel sessionId={selectedConversationId} agentName={currentAgent?.name}
+                knowledgeBaseIds={currentAgent?.knowledgeBaseIds || []} />}
             </div>
             {showScheduledTaskPanel && isFunctionalAgent && (
               <ScheduledTaskPanel 

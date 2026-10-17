@@ -29,6 +29,7 @@ import org.xhy.domain.llm.model.ModelEntity;
 import org.xhy.domain.llm.model.ProviderEntity;
 import org.xhy.domain.llm.service.LLMDomainService;
 import org.xhy.domain.run.model.RunEntity;
+import org.xhy.domain.run.model.RunApprovalEntity;
 import org.xhy.domain.run.model.RunStepEntity;
 import org.xhy.domain.run.repository.RunStore;
 import org.xhy.infrastructure.auth.UserContext;
@@ -210,7 +211,7 @@ class PortalAgentRunControllerTest {
         when(sessions.getSession("session-1", "owner")).thenReturn(session);
         InMemoryStore store = new InMemoryStore();
         RunWorker worker = new RunWorker(store, run -> {
-            throw new IllegalStateException("secret-provider-key");
+            throw new IllegalStateException("Cookie: runlogSentinelabcdefghijklmnopqrstuvwxyz");
         });
         RunAppService service = new RunAppService(sessions, store, worker::process);
         MockMvc api = MockMvcBuilders.standaloneSetup(new PortalAgentRunController(service))
@@ -221,9 +222,9 @@ class PortalAgentRunControllerTest {
         JsonNode reloaded = data(api.perform(get("/agents/runs/" + failed.path("id").asText())).andReturn()
                 .getResponse().getContentAsString(StandardCharsets.UTF_8));
         assertEquals("FAILED", reloaded.path("status").asText());
-        assertEquals("模型执行失败", reloaded.path("errorMessage").asText());
+        assertEquals("运行执行失败。检查运行步骤后重新运行。", reloaded.path("errorMessage").asText());
         assertEquals("FAILED", reloaded.path("steps").get(0).path("status").asText());
-        assertEquals(false, reloaded.toString().contains("secret-provider-key"));
+        assertEquals(false, reloaded.toString().contains("runlogSentinelabcdefghijklmnopqrstuvwxyz"));
     }
 
     @ParameterizedTest
@@ -393,6 +394,37 @@ class PortalAgentRunControllerTest {
             return steps.getOrDefault(runId, List.of()).stream().map(InMemoryStore::copy).toList();
         }
 
+        @Override
+        public boolean requestApproval(String runId, String token, RunApprovalEntity approval) {
+            return false;
+        }
+
+        @Override
+        public RunApprovalEntity findApprovalForRun(String runId) {
+            return null;
+        }
+
+        @Override
+        public boolean decideApproval(String runId, String approvalId, String userId, boolean approve) {
+            return false;
+        }
+
+        @Override
+        public boolean beginApprovedAction(String runId, String token, String approvalId) {
+            return false;
+        }
+
+        @Override
+        public boolean recordApprovedActionResult(String runId, String token, String approvalId,
+                String externalResourceId) {
+            return false;
+        }
+
+        @Override
+        public boolean waitForReconciliation(String runId, String token) {
+            return false;
+        }
+
         private static RunEntity copy(RunEntity run) {
             RunEntity snapshot = new RunEntity();
             BeanUtils.copyProperties(run, snapshot);
@@ -405,4 +437,5 @@ class PortalAgentRunControllerTest {
             return snapshot;
         }
     }
+
 }

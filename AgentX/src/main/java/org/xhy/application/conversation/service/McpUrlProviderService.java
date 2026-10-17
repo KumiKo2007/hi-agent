@@ -8,15 +8,20 @@ import org.xhy.application.container.dto.ContainerDTO;
 import org.xhy.domain.container.constant.ContainerStatus;
 import org.xhy.domain.tool.service.ToolDomainService;
 import org.xhy.domain.tool.model.ToolEntity;
+import org.xhy.domain.tool.model.UserToolEntity;
 import org.xhy.infrastructure.mcp_gateway.MCPGatewayService;
 import org.xhy.infrastructure.exception.BusinessException;
 import org.xhy.infrastructure.utils.JsonUtils;
+import org.xhy.application.tool.service.McpEndpoint;
+import org.xhy.application.tool.service.McpEndpointResolver;
+import org.xhy.domain.tool.constant.McpTransportType;
 
+import java.net.URI;
 import java.util.Map;
 
 /** MCP URL提供服务 负责协调容器管理和URL构建 */
 @Service
-public class McpUrlProviderService {
+public class McpUrlProviderService implements McpEndpointResolver {
 
     private static final Logger logger = LoggerFactory.getLogger(McpUrlProviderService.class);
 
@@ -42,11 +47,11 @@ public class McpUrlProviderService {
 
         if (isGlobalTool) {
             // 全局工具：使用审核容器
-            return buildReviewContainerSSEUrl(mcpServerName);
+            return buildReviewContainerUrl(mcpServerName, McpTransportType.LEGACY_SSE);
         }
 
         // 用户工具：需要用户容器
-        return buildUserContainerSSEUrl(mcpServerName, userId);
+        return buildUserContainerUrl(mcpServerName, userId, McpTransportType.LEGACY_SSE);
     }
 
     /** 获取MCP工具的SSE URL（包含容器自动创建和启动）
@@ -56,11 +61,24 @@ public class McpUrlProviderService {
      * @return SSE连接URL */
     public String getMcpToolUrl(String mcpServerName, String userId) {
         try {
-            return getSSEUrl(mcpServerName, userId);
+            return resolve(mcpServerName, userId).uri().toString();
         } catch (Exception e) {
             logger.error("获取MCP工具URL失败: userId={}, tool={}", userId, mcpServerName, e);
             throw new BusinessException("无法连接工具：" + mcpServerName + " - " + e.getMessage());
         }
+    }
+
+    @Override
+    public McpEndpoint resolve(String mcpServerName, String userId) {
+        UserToolEntity installedTool = toolDomainService.getUserInstalledToolByServerName(mcpServerName, userId);
+        ToolEntity tool = installedTool == null ? null
+                : toolDomainService.getToolByServerNameForUsage(mcpServerName, userId);
+        McpTransportType transportType = installedTool == null || installedTool.getTransportType() == null
+                ? McpTransportType.LEGACY_SSE : installedTool.getTransportType();
+        boolean global = tool != null && tool.isGlobal();
+        String url = global ? buildReviewContainerUrl(mcpServerName, transportType)
+                : buildUserContainerUrl(mcpServerName, userId, transportType);
+        return new McpEndpoint(transportType, URI.create(url));
     }
 
     /** 判断是否为全局工具 */
@@ -75,46 +93,48 @@ public class McpUrlProviderService {
     }
 
     /** 构建用户容器工具SSE URL */
-    private String buildUserContainerSSEUrl(String mcpServerName, String userId) {
+    private String buildUserContainerUrl(String mcpServerName, String userId, McpTransportType transportType) {
         try {
             logger.info("准备用户容器工具连接: userId={}, tool={}", userId, mcpServerName);
 
             // 1. 确保用户容器就绪（自动创建和启动）
             ContainerDTO containerInfo = ensureUserContainerReady(userId);
 
-            // 2. 构建容器SSE URL
-            String sseUrl = mcpGatewayService.buildUserContainerUrl(mcpServerName, containerInfo.getIpAddress(),
-                    containerInfo.getExternalPort());
+            // 2. 构建对应传输类型的容器URL
+            String endpointUrl = mcpGatewayService.buildUserContainerUrl(mcpServerName, containerInfo.getIpAddress(),
+                    containerInfo.getExternalPort(), transportType);
 
             // 3. 部署工具
             deployTool(containerInfo, mcpServerName, userId);
 
-            logger.info("用户容器工具连接就绪: userId={}, url={}", userId, maskSensitiveInfo(sseUrl));
-            return sseUrl;
+            logger.info("用户容器工具连接就绪: userId={}, transport={}, url={}", userId, transportType,
+                    maskSensitiveInfo(endpointUrl));
+            return endpointUrl;
 
         } catch (Exception e) {
-            logger.error("构建用户容器SSE URL失败: userId={}, tool={}", userId, mcpServerName, e);
+            logger.error("构建用户容器MCP URL失败: userId={}, tool={}", userId, mcpServerName, e);
             throw new BusinessException("无法连接用户工具：" + e.getMessage());
         }
     }
 
     /** 构建审核容器工具SSE URL */
-    private String buildReviewContainerSSEUrl(String mcpServerName) {
+    private String buildReviewContainerUrl(String mcpServerName, McpTransportType transportType) {
         try {
             logger.info("准备审核容器工具连接: tool={}", mcpServerName);
 
             // 1. 确保审核容器就绪（自动创建和启动）
             ContainerDTO containerInfo = ensureReviewContainerReady();
 
-            // 2. 构建容器SSE URL
-            String sseUrl = mcpGatewayService.buildUserContainerUrl(mcpServerName, containerInfo.getIpAddress(),
-                    containerInfo.getExternalPort());
+            // 2. 构建对应传输类型的容器URL
+            String endpointUrl = mcpGatewayService.buildUserContainerUrl(mcpServerName, containerInfo.getIpAddress(),
+                    containerInfo.getExternalPort(), transportType);
 
-            logger.info("审核容器工具连接就绪: tool={}, url={}", mcpServerName, maskSensitiveInfo(sseUrl));
-            return sseUrl;
+            logger.info("审核容器工具连接就绪: tool={}, transport={}, url={}", mcpServerName, transportType,
+                    maskSensitiveInfo(endpointUrl));
+            return endpointUrl;
 
         } catch (Exception e) {
-            logger.error("构建审核容器SSE URL失败: tool={}", mcpServerName, e);
+            logger.error("构建审核容器MCP URL失败: tool={}", mcpServerName, e);
             throw new BusinessException("无法连接全局工具：" + e.getMessage());
         }
     }

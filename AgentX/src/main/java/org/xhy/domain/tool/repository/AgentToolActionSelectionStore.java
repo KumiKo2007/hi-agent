@@ -9,4 +9,12 @@ public interface AgentToolActionSelectionStore {
     boolean contains(String agentId, String serviceId, String actionName);
 
     void replace(String agentId, String serviceId, List<String> actionNames);
+
+    List<String> preauthorized(String agentId, String serviceId);
+
+    boolean isPreauthorized(String agentId, String serviceId, String actionName);
+
+    void replacePreauthorized(String agentId, String serviceId, List<String> actionNames);
+
+    void revokePreauthorization(String serviceId, String actionName);
 }

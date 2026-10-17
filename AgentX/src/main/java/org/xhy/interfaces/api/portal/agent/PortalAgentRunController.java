@@ -13,6 +13,8 @@ import org.xhy.application.run.service.RunAppService;
 import org.xhy.infrastructure.auth.UserContext;
 import org.xhy.interfaces.api.common.Result;
 import org.xhy.interfaces.dto.run.request.StartRunRequest;
+import org.xhy.interfaces.dto.run.request.DecideRunApprovalRequest;
+import org.xhy.interfaces.dto.run.request.ResolveRunReconciliationRequest;
 
 import java.util.List;
 
@@ -29,7 +31,8 @@ public class PortalAgentRunController {
     /** 在已有会话中提交一个独立目标。 */
     @PostMapping("/sessions/{sessionId}/runs")
     public Result<RunDTO> start(@PathVariable String sessionId, @RequestBody @Validated StartRunRequest request) {
-        return Result.success(runs.start(sessionId, request.getGoal(), UserContext.getCurrentUserId()));
+        return Result.success(runs.start(sessionId, request.getGoal(), UserContext.getCurrentUserId(),
+                request.getApprovalPolicy(), request.getKnowledgeBaseId(), request.getTargetRepository()));
     }
 
     /** 获取当前使用者在会话中的运行列表。 */
@@ -54,5 +57,22 @@ public class PortalAgentRunController {
     @PostMapping("/runs/{runId}/cancel")
     public Result<RunDTO> cancelByAction(@PathVariable String runId) {
         return Result.success(runs.cancel(runId, UserContext.getCurrentUserId()));
+    }
+
+    /** Only the run owner can approve or reject its pending fixed write action. */
+    @PostMapping("/runs/{runId}/approvals/{approvalId}")
+    public Result<RunDTO> decideApproval(@PathVariable String runId, @PathVariable String approvalId,
+            @RequestBody @Validated DecideRunApprovalRequest request) {
+        boolean approve = request.getDecision() == DecideRunApprovalRequest.Decision.APPROVE;
+        return Result.success(runs.decideApproval(runId, approvalId, UserContext.getCurrentUserId(), approve));
+    }
+
+    /** Only the run owner may resolve an uncertain approved write, with an auditable evidence record. */
+    @PostMapping("/runs/{runId}/approvals/{approvalId}/reconciliation")
+    public Result<RunDTO> resolveReconciliation(@PathVariable String runId, @PathVariable String approvalId,
+            @RequestBody @Validated ResolveRunReconciliationRequest request) {
+        return Result.success(runs.resolveReconciliation(runId, approvalId, UserContext.getCurrentUserId(),
+                request.getOutcome().name(), request.getEvidence(), request.getEvidenceReference(),
+                request.getExternalResourceId()));
     }
 }

@@ -6,4 +6,14 @@ import org.xhy.domain.run.model.RunEntity;
 @FunctionalInterface
 public interface RunModel {
     String execute(RunEntity run);
+
+    /** Existing models return an answer; action-aware models can pause on a validated write proposal. */
+    default RunExecution executeWithActions(RunEntity run) {
+        return RunExecution.completed(execute(run));
+    }
+
+    /** Executes while optionally reporting safe, allowlisted milestones to the owning worker. */
+    default RunExecution executeWithActions(RunEntity run, RunTimelineSink timeline) {
+        return executeWithActions(run);
+    }
 }

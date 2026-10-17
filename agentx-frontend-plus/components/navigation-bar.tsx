@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { Database, FileText, Menu, Search, Settings, LogOut, Wrench, Activity,Package,Tag } from "lucide-react"
+import { Bot, Database, FileText, LogOut, Menu, Settings } from "lucide-react"
 import { toast } from "@/hooks/use-toast"
 
 import { cn } from "@/lib/utils"
@@ -24,9 +24,9 @@ import { BrandMark } from "@/components/brand-mark"
 
 const navItems = [
   {
-    name: "探索",
-    href: "/explore",
-    icon: Search,
+    name: "工作区",
+    href: "/workspace",
+    icon: Bot,
   },
   {
     name: "工作室",
@@ -37,11 +37,6 @@ const navItems = [
     name: "知识库",
     href: "/knowledge",
     icon: Database,
-  },
-  {
-    name: "工具市场",
-    href: "/tools",
-    icon: Wrench,
   },
 ]
 
@@ -76,9 +71,6 @@ export function NavigationBar() {
 
   // Check if current path matches the menu item's href
   const isActiveRoute = (href: string) => {
-    if (href === "/explore" && pathname === "/") {
-      return true // Main page also counts as explore
-    }
     return pathname === href || pathname.startsWith(`${href}/`)
   }
 
@@ -193,64 +185,15 @@ export function NavigationBar() {
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
-                  <Link href="/settings/profile">
-                    <Settings className="mr-2 h-4 w-4" />
-                    个人设置
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link href="/settings/general">
-                    <Settings className="mr-2 h-4 w-4" />
-                    通用设置
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link href="/settings/billing">
-                    <Settings className="mr-2 h-4 w-4" />
-                    账户与计费
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link href="/settings/pricing">
-                    <Tag className="mr-2 h-4 w-4" />
-                    价格说明
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link href="/settings/api-keys">
-                    <Settings className="mr-2 h-4 w-4" />
-                    API 密钥管理
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
                   <Link href="/settings/github">
                     <Settings className="mr-2 h-4 w-4" />
                     GitHub 连接
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
-                  <Link href="/settings/memory">
-                    <Settings className="mr-2 h-4 w-4" />
-                    记忆管理
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
                   <Link href="/settings/providers">
                     <Settings className="mr-2 h-4 w-4" />
                     服务提供商
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <Link href="/settings/orders">
-                    <Package className="mr-2 h-4 w-4" />
-                    我的订单
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link href="/traces">
-                    <Activity className="mr-2 h-4 w-4" />
-                    执行追踪
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />

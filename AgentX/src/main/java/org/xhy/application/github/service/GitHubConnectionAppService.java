@@ -85,6 +85,22 @@ public class GitHubConnectionAppService {
         return action.apply(cipher.decrypt(ownerId, connection.encryptedToken()));
     }
 
+    /** Revalidates the saved GitHub credential and exact repository immediately before a write. */
+    public void verifyAuthorizedRepository(String ownerId, String repositoryName) {
+        requireOwner(ownerId);
+        String normalized = normalizeRepository(repositoryName);
+        GitHubConnection connection = repository.findByOwner(ownerId)
+                .orElseThrow(() -> new BusinessException("GitHub 连接未授权或已撤销"));
+        if (!connection.repositories().contains(normalized)) {
+            throw new BusinessException("目标仓库不在 GitHub 连接授权范围内");
+        }
+        String token = cipher.decrypt(ownerId, connection.encryptedToken());
+        GitHubCredentialVerifier.Identity current = verifier.verify(token, List.of(normalized));
+        if (!connection.githubUserId().equals(current.id())) {
+            throw new BusinessException("GitHub 身份已变化，请重新连接");
+        }
+    }
+
     private GitHubConnectionDTO toDTO(GitHubConnection connection) {
         return new GitHubConnectionDTO(connection.githubUserId(), connection.githubLogin(), connection.repositories());
     }

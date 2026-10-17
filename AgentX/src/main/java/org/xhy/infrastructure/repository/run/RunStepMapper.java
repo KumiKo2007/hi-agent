@@ -16,6 +16,53 @@ public interface RunStepMapper extends BaseMapper<RunStepEntity> {
     int startFirstStep(@Param("runId") String runId);
 
     @Update("""
+            UPDATE agent_run_steps SET status = 'WAITING_APPROVAL', updated_at = CURRENT_TIMESTAMP
+            WHERE run_id = #{runId} AND sequence_no = 1 AND status = 'RUNNING' AND deleted_at IS NULL
+            """)
+    int waitFirstStepForApproval(@Param("runId") String runId);
+
+    @Update("""
+            UPDATE agent_run_steps SET status = 'WAITING_RECONCILIATION',
+                error_message = #{reason}, updated_at = CURRENT_TIMESTAMP
+            WHERE run_id = #{runId} AND sequence_no = 1 AND status = 'RUNNING' AND deleted_at IS NULL
+            """)
+    int waitFirstStepForReconciliation(@Param("runId") String runId, @Param("reason") String reason);
+
+    @Update("""
+            UPDATE agent_run_steps SET status = 'WAITING_SCHEMA_REVIEW', error_message = #{reason},
+                updated_at = CURRENT_TIMESTAMP
+            WHERE run_id = #{runId} AND sequence_no = 1 AND status = 'RUNNING' AND deleted_at IS NULL
+            """)
+    int waitFirstStepForSchemaReview(@Param("runId") String runId, @Param("reason") String reason);
+
+    @Update("""
+            UPDATE agent_run_steps SET status = 'PENDING', error_message = NULL, updated_at = CURRENT_TIMESTAMP
+            WHERE run_id = #{runId} AND sequence_no = 1 AND status = 'WAITING_APPROVAL' AND deleted_at IS NULL
+            """)
+    int reopenFirstStepAfterApproval(@Param("runId") String runId);
+
+    @Update("""
+            UPDATE agent_run_steps SET status = 'PENDING', error_message = NULL, result = NULL,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE run_id = #{runId} AND sequence_no = 1 AND status = 'WAITING_RECONCILIATION' AND deleted_at IS NULL
+            """)
+    int reopenFirstStepAfterReconciliation(@Param("runId") String runId);
+
+    @Update("""
+            UPDATE agent_run_steps SET status = 'PENDING', error_message = NULL, result = NULL,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE run_id = #{runId} AND sequence_no = 1 AND status = 'RUNNING' AND deleted_at IS NULL
+            """)
+    int requeueFirstStepAfterCheck(@Param("runId") String runId);
+
+    @Update("""
+            UPDATE agent_run_steps SET status = 'CANCELLED', error_message = #{reason}, result = NULL,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE run_id = #{runId} AND sequence_no = 1 AND status = 'WAITING_RECONCILIATION' AND deleted_at IS NULL
+            """)
+    int stopFirstStepAfterReconciliation(@Param("runId") String runId, @Param("reason") String reason);
+
+    @Update("""
             UPDATE agent_run_steps SET status = 'COMPLETED', result = #{answer}, error_message = NULL,
                 updated_at = CURRENT_TIMESTAMP
             WHERE run_id = #{runId} AND sequence_no = 1 AND deleted_at IS NULL
@@ -33,7 +80,8 @@ public interface RunStepMapper extends BaseMapper<RunStepEntity> {
             UPDATE agent_run_steps SET status = 'CANCELLED', result = NULL, error_message = '运行已取消',
                 updated_at = CURRENT_TIMESTAMP
             WHERE run_id = #{runId} AND deleted_at IS NULL
-              AND status IN ('PENDING', 'RUNNING', 'WAITING_APPROVAL', 'WAITING_RECONCILIATION')
+              AND status IN ('PENDING', 'RUNNING', 'WAITING_APPROVAL', 'WAITING_RECONCILIATION',
+                  'WAITING_SCHEMA_REVIEW')
             """)
     int cancelOpenSteps(@Param("runId") String runId);
 }

@@ -54,7 +54,9 @@ public class PersistentToolActionCatalog implements ToolActionCatalog {
                 : policy.classification();
         Map<String, Object> schema = policy == null ? definition.getParameters() : policy.schema();
         return new RegisteredToolAction(serviceId, installed.getMcpServerName(), actionName,
-                definition.getDescription(), schema, classification);
+                definition.getDescription(), schema, classification, policy != null,
+                policy != null && classification == ToolActionClassification.WRITE_REQUIRES_APPROVAL
+                        && selections.isPreauthorized(agent.getId(), serviceId, actionName));
     }
 
     @Override

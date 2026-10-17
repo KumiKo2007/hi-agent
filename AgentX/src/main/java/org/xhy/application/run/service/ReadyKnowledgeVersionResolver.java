@@ -5,6 +5,7 @@ import org.xhy.domain.agent.model.AgentEntity;
 import org.xhy.domain.agent.service.AgentDomainService;
 import org.xhy.domain.rag.model.RagVersionEntity;
 import org.xhy.domain.rag.service.management.RagVersionDomainService;
+import org.xhy.infrastructure.exception.BusinessException;
 
 /** Pins the latest ready snapshot for the first knowledge base configured on an agent. */
 @Service
@@ -35,5 +36,22 @@ public class ReadyKnowledgeVersionResolver implements RunKnowledgeVersionResolve
             }
         }
         return null;
+    }
+
+    @Override
+    public String resolve(String agentId, String userId, String knowledgeBaseId) {
+        if (knowledgeBaseId == null || knowledgeBaseId.isBlank()) {
+            return resolve(agentId, userId);
+        }
+        AgentEntity agent = agents.getAgentWithPermissionCheck(agentId, userId);
+        if (agent == null || agent.getKnowledgeBaseIds() == null
+                || !agent.getKnowledgeBaseIds().contains(knowledgeBaseId)) {
+            throw new BusinessException("所选知识库未配置给当前助理");
+        }
+        RagVersionEntity version = versions.findLatestReadyVersion(knowledgeBaseId, userId);
+        if (version == null || !Boolean.TRUE.equals(version.getSearchReady())) {
+            throw new BusinessException("所选知识库尚无可检索版本");
+        }
+        return version.getId();
     }
 }

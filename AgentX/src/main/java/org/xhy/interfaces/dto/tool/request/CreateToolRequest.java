@@ -6,6 +6,7 @@ import jakarta.validation.constraints.NotNull;
 
 import java.util.List;
 import java.util.Map;
+import org.xhy.domain.tool.constant.McpTransportType;
 
 /** 创建工具的请求对象 */
 public class CreateToolRequest {
@@ -38,6 +39,9 @@ public class CreateToolRequest {
 
     /** 是否为全局工具，默认为false */
     private Boolean isGlobal = false;
+
+    /** Defaults new MCP services to Streamable HTTP. */
+    private McpTransportType transportType = McpTransportType.STREAMABLE_HTTP;
 
     // 构造方法
     public CreateToolRequest() {
@@ -106,5 +110,13 @@ public class CreateToolRequest {
 
     public void setIsGlobal(Boolean isGlobal) {
         this.isGlobal = isGlobal;
+    }
+
+    public McpTransportType getTransportType() {
+        return transportType;
+    }
+
+    public void setTransportType(McpTransportType transportType) {
+        this.transportType = transportType;
     }
 }

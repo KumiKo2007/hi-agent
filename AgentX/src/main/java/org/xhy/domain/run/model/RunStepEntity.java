@@ -44,6 +44,16 @@ public class RunStepEntity extends BaseEntity {
         updatedAt = LocalDateTime.now();
     }
 
+    public void waitForApproval() {
+        status = "WAITING_APPROVAL";
+        updatedAt = LocalDateTime.now();
+    }
+
+    public void waitForReconciliation() {
+        status = "WAITING_RECONCILIATION";
+        updatedAt = LocalDateTime.now();
+    }
+
     public void complete(String answer) {
         status = "COMPLETED";
         result = answer;

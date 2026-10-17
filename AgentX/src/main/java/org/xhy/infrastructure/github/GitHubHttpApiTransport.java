@@ -26,7 +26,7 @@ public class GitHubHttpApiTransport implements GitHubApiTransport {
 
     @Override
     public JsonNode get(String token, String path) {
-        if (!path.equals("/user") && !path.matches("/user/repos\\?per_page=100&page=[0-9]{1,2}")) {
+        if (!isAllowedGetPath(path)) {
             throw new BusinessException("不允许的 GitHub API 读取路径");
         }
         HttpRequest request = HttpRequest.newBuilder(API_ROOT.resolve(path)).timeout(Duration.ofSeconds(15))
@@ -44,5 +44,10 @@ public class GitHubHttpApiTransport implements GitHubApiTransport {
             Thread.currentThread().interrupt();
             throw new BusinessException("GitHub 连接核验中断");
         }
+    }
+
+    public static boolean isAllowedGetPath(String path) {
+        return path.equals("/user") || path.matches("/user/repos\\?per_page=100&page=[0-9]{1,2}") || path.matches(
+                "/search/issues\\?q=repo%3A[A-Za-z0-9_.-]{1,39}%2F[A-Za-z0-9_.-]{1,100}%20in%3Abody%20%22hi-agent-action-intent%3A[0-9a-fA-F-]{36}%22");
     }
 }

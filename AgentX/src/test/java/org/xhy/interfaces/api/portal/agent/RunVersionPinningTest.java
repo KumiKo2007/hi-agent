@@ -19,6 +19,7 @@ import org.xhy.domain.llm.model.ModelEntity;
 import org.xhy.domain.llm.model.ProviderEntity;
 import org.xhy.domain.llm.service.LLMDomainService;
 import org.xhy.domain.run.model.RunEntity;
+import org.xhy.domain.run.model.RunApprovalEntity;
 import org.xhy.domain.run.model.RunStepEntity;
 import org.xhy.domain.run.repository.RunDispatch;
 import org.xhy.domain.run.repository.RunStore;
@@ -262,6 +263,37 @@ class RunVersionPinningTest {
             return steps.getOrDefault(runId, List.of()).stream().map(InMemoryStore::copy).toList();
         }
 
+        @Override
+        public boolean requestApproval(String runId, String token, RunApprovalEntity approval) {
+            return false;
+        }
+
+        @Override
+        public RunApprovalEntity findApprovalForRun(String runId) {
+            return null;
+        }
+
+        @Override
+        public boolean decideApproval(String runId, String approvalId, String userId, boolean approve) {
+            return false;
+        }
+
+        @Override
+        public boolean beginApprovedAction(String runId, String token, String approvalId) {
+            return false;
+        }
+
+        @Override
+        public boolean recordApprovedActionResult(String runId, String token, String approvalId,
+                String externalResourceId) {
+            return false;
+        }
+
+        @Override
+        public boolean waitForReconciliation(String runId, String token) {
+            return false;
+        }
+
         private static RunEntity copy(RunEntity source) {
             if (source == null) {
                 return null;
@@ -276,6 +308,7 @@ class RunVersionPinningTest {
             target.setAgentVersionNumber(source.getAgentVersionNumber());
             target.setModelId(source.getModelId());
             target.setModelConnectionType(source.getModelConnectionType());
+            target.setApprovalPolicy(source.getApprovalPolicy());
             target.setKnowledgeVersionId(source.getKnowledgeVersionId());
             target.setCreatedAt(source.getCreatedAt());
             target.setUpdatedAt(source.getUpdatedAt());

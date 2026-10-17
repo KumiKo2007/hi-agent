@@ -37,4 +37,18 @@ public class PortalAgentToolActionController {
         return Result
                 .success(actions.replace(agentId, serviceId, request.getActionNames(), UserContext.getCurrentUserId()));
     }
+
+    /** 查看创建者为已分类写动作设置的预授权。 */
+    @GetMapping("/{agentId}/tool-services/{serviceId}/preauthorizations")
+    public Result<List<String>> listPreauthorized(@PathVariable String agentId, @PathVariable String serviceId) {
+        return Result.success(actions.listPreauthorized(agentId, serviceId, UserContext.getCurrentUserId()));
+    }
+
+    /** 设置预授权；未分类、只读或未启用动作会被拒绝。 */
+    @PutMapping("/{agentId}/tool-services/{serviceId}/preauthorizations")
+    public Result<List<String>> replacePreauthorized(@PathVariable String agentId, @PathVariable String serviceId,
+            @RequestBody @Validated SelectToolActionsRequest request) {
+        return Result.success(actions.replacePreauthorized(agentId, serviceId, request.getActionNames(),
+                UserContext.getCurrentUserId()));
+    }
 }
