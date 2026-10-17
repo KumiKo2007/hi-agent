@@ -22,10 +22,10 @@ public class GitHubIssueResultNormalizer implements ApprovedActionResultNormaliz
     private static final ObjectMapper JSON = new ObjectMapper();
     private static final int MAX_RESULT_LENGTH = 1_000_000;
     private static final Pattern URL_PATTERN = Pattern.compile("https?://[^\\s<>\\\"'`]+", Pattern.CASE_INSENSITIVE);
-    private static final Pattern ISSUE_NUMBER_PATTERN = Pattern.compile(
-            "(?i)\\b(?:created\\s+)?issue\\s*(?:number\\s*)?#?\\s*([1-9]\\d*)\\b");
-    private static final Pattern PULL_REQUEST_TEXT_PATTERN = Pattern.compile(
-            "(?i)\\b(?:pull\\s+requests?|pr)\\s*#?\\s*\\d+\\b");
+    private static final Pattern ISSUE_NUMBER_PATTERN = Pattern
+            .compile("(?i)\\b(?:created\\s+)?issue\\s*(?:number\\s*)?#?\\s*([1-9]\\d*)\\b");
+    private static final Pattern PULL_REQUEST_TEXT_PATTERN = Pattern
+            .compile("(?i)\\b(?:pull\\s+requests?|pr)\\s*#?\\s*\\d+\\b");
     private static final Set<String> URL_FIELDS = Set.of("url", "html_url", "htmlurl", "issue_url", "issueurl",
             "web_url", "weburl");
     private static final Set<String> NUMBER_FIELDS = Set.of("number", "issue_number", "issuenumber");
@@ -104,8 +104,7 @@ public class GitHubIssueResultNormalizer implements ApprovedActionResultNormaliz
                 if (NUMBER_FIELDS.contains(key)) {
                     addNumber(fields, value);
                 }
-                if (("iserror".equals(key) || "is_error".equals(key)) && value.isBoolean()
-                        && value.booleanValue()) {
+                if (("iserror".equals(key) || "is_error".equals(key)) && value.isBoolean() && value.booleanValue()) {
                     fields.error = true;
                 }
                 if (("pull_request".equals(key) || "pullrequest".equals(key)) && !value.isNull()
@@ -194,8 +193,8 @@ public class GitHubIssueResultNormalizer implements ApprovedActionResultNormaliz
             owner = path[1];
             repo = path[2];
             number = path[4];
-        } else if ("api.github.com".equalsIgnoreCase(host) && path.length == 6
-                && "repos".equalsIgnoreCase(path[1]) && "issues".equalsIgnoreCase(path[4])) {
+        } else if ("api.github.com".equalsIgnoreCase(host) && path.length == 6 && "repos".equalsIgnoreCase(path[1])
+                && "issues".equalsIgnoreCase(path[4])) {
             owner = path[2];
             repo = path[3];
             number = path[5];

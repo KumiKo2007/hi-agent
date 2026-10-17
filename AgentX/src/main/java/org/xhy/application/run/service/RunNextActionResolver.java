@@ -25,8 +25,7 @@ public final class RunNextActionResolver {
             if ("INSUFFICIENT_EVIDENCE".equals(failureCode)) {
                 return RunNextAction.ADD_OR_SELECT_EVIDENCE;
             }
-            if ("PERMISSION_DENIED".equals(failureCode)
-                    || "TARGET_REPOSITORY_NOT_AUTHORIZED".equals(failureCode)) {
+            if ("PERMISSION_DENIED".equals(failureCode) || "TARGET_REPOSITORY_NOT_AUTHORIZED".equals(failureCode)) {
                 return RunNextAction.CHECK_REPOSITORY_AUTHORIZATION;
             }
             if ("MODEL_UNAVAILABLE".equals(failureCode)) {

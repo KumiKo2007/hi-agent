@@ -38,8 +38,7 @@ public class McpTransportClientFactory implements McpClientFactory {
     /** Opens only GitHub's documented remote MCP endpoint with a user-scoped bearer credential. */
     @Override
     public McpClient openWithGitHubToken(String serverName, String userId, String githubToken) {
-        if (!"github".equals(serverName) || userId == null || userId.isBlank()
-                || !isUsableCredential(githubToken)) {
+        if (!"github".equals(serverName) || userId == null || userId.isBlank() || !isUsableCredential(githubToken)) {
             throw new BusinessException("GitHub MCP 连接未能通过安全校验");
         }
         return open(new McpEndpoint(McpTransportType.STREAMABLE_HTTP, OFFICIAL_GITHUB_MCP), githubToken);
@@ -56,10 +55,8 @@ public class McpTransportClientFactory implements McpClientFactory {
 
     private McpClient open(McpEndpoint endpoint, String githubToken) {
         McpClientTransport transport = createTransport(endpoint, githubToken);
-        McpSyncClient client = io.modelcontextprotocol.client.McpClient.sync(transport)
-                .requestTimeout(REQUEST_TIMEOUT)
-                .initializationTimeout(INITIALIZATION_TIMEOUT)
-                .build();
+        McpSyncClient client = io.modelcontextprotocol.client.McpClient.sync(transport).requestTimeout(REQUEST_TIMEOUT)
+                .initializationTimeout(INITIALIZATION_TIMEOUT).build();
         try {
             client.initialize();
             return new SdkMcpClientAdapter(clientKey(endpoint), client);
@@ -80,8 +77,7 @@ public class McpTransportClientFactory implements McpClientFactory {
             throw new IllegalArgumentException("MCP endpoint must be a trusted HTTP(S) URI");
         }
         String baseUri = uri.getScheme() + "://" + uri.getRawAuthority();
-        String endpointPathAndQuery = uri.getRawPath()
-                + (uri.getRawQuery() == null ? "" : "?" + uri.getRawQuery());
+        String endpointPathAndQuery = uri.getRawPath() + (uri.getRawQuery() == null ? "" : "?" + uri.getRawQuery());
         if (githubToken != null && !isOfficialGitHubMcpUri(uri)) {
             throw new IllegalArgumentException("GitHub credentials are restricted to the official MCP endpoint");
         }
@@ -89,9 +85,8 @@ public class McpTransportClientFactory implements McpClientFactory {
             HttpClientStreamableHttpTransport.Builder builder = HttpClientStreamableHttpTransport.builder(baseUri)
                     .endpoint(endpointPathAndQuery).connectTimeout(CONNECT_TIMEOUT).openConnectionOnStartup(false);
             if (githubToken != null) {
-                builder.clientBuilder(noRedirectHttpClientBuilder())
-                        .httpRequestCustomizer((request, method, requestUri, body, context) ->
-                                addGitHubAuthorization(request, requestUri, githubToken));
+                builder.clientBuilder(noRedirectHttpClientBuilder()).httpRequestCustomizer((request, method, requestUri,
+                        body, context) -> addGitHubAuthorization(request, requestUri, githubToken));
             }
             return builder.build();
         }
@@ -121,10 +116,9 @@ public class McpTransportClientFactory implements McpClientFactory {
 
     private static boolean isOfficialGitHubMcpUri(URI uri) {
         return uri != null && "https".equalsIgnoreCase(uri.getScheme())
-                && "api.githubcopilot.com".equalsIgnoreCase(uri.getHost())
-                && uri.getPort() == -1 && uri.getUserInfo() == null
-                && "/mcp/".equals(uri.getRawPath())
-                && uri.getRawQuery() == null && uri.getRawFragment() == null;
+                && "api.githubcopilot.com".equalsIgnoreCase(uri.getHost()) && uri.getPort() == -1
+                && uri.getUserInfo() == null && "/mcp/".equals(uri.getRawPath()) && uri.getRawQuery() == null
+                && uri.getRawFragment() == null;
     }
 
     static HttpClient.Builder noRedirectHttpClientBuilder() {

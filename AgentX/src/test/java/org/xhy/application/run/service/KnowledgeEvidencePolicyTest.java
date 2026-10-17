@@ -10,8 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class KnowledgeEvidencePolicyTest {
     @Test
     void rejectsOppositePolarityWhenAnUnrelatedCitedSentenceContainsNegation() {
-        KnowledgeCitation citation = citation(
-                "The gateway retry failed requests. The cache does not expire early.");
+        KnowledgeCitation citation = citation("The gateway retry failed requests. The cache does not expire early.");
         String arguments = issue("Gateway retry", "The gateway does not retry failed requests.");
 
         assertFalse(KnowledgeEvidencePolicy.supportsDraftClaims(arguments, List.of(citation)));
@@ -44,8 +43,7 @@ class KnowledgeEvidencePolicyTest {
     @Test
     void rejectsFactualTitleWithOppositePolarityEvenWhenBodyIsSupported() {
         KnowledgeCitation citation = citation("The gateway does not retry failed requests.");
-        String arguments = issue("The gateway retries failed requests.",
-                "The gateway does not retry failed requests.");
+        String arguments = issue("The gateway retries failed requests.", "The gateway does not retry failed requests.");
 
         assertFalse(KnowledgeEvidencePolicy.supportsDraftClaims(arguments, List.of(citation)));
     }
@@ -53,8 +51,7 @@ class KnowledgeEvidencePolicyTest {
     @Test
     void acceptsPositiveFactualTitleSupportedByTheCitation() {
         KnowledgeCitation citation = citation("The gateway retries failed requests.");
-        String arguments = issue("The gateway retries failed requests.",
-                "The gateway retries failed requests.");
+        String arguments = issue("The gateway retries failed requests.", "The gateway retries failed requests.");
 
         assertTrue(KnowledgeEvidencePolicy.supportsDraftClaims(arguments, List.of(citation)));
     }
@@ -145,8 +142,7 @@ class KnowledgeEvidencePolicyTest {
 
     @Test
     void splitsChineseContrastiveMarkerBeforeCheckingGatewayPolarity() {
-        KnowledgeCitation citation = citation(
-                "The gateway retries failed requests，但是缓存不会提前过期。");
+        KnowledgeCitation citation = citation("The gateway retries failed requests，但是缓存不会提前过期。");
         String arguments = issue("Gateway retry", "The gateway does not retry failed requests.");
 
         assertFalse(KnowledgeEvidencePolicy.supportsDraftClaims(arguments, List.of(citation)));
@@ -187,8 +183,7 @@ class KnowledgeEvidencePolicyTest {
     @Test
     void splitsCommonChineseContrastMarkersBeforeCheckingGatewayPolarity() {
         for (String marker : List.of("而", "却")) {
-            KnowledgeCitation citation = citation(
-                    "The gateway retries failed requests" + marker + "缓存不会提前过期");
+            KnowledgeCitation citation = citation("The gateway retries failed requests" + marker + "缓存不会提前过期");
             String arguments = issue("Gateway retry", "The gateway does not retry failed requests.");
 
             assertFalse(KnowledgeEvidencePolicy.supportsDraftClaims(arguments, List.of(citation)), marker);
@@ -243,8 +238,7 @@ class KnowledgeEvidencePolicyTest {
     @Test
     void treatsWithoutRetryFormsAsActionNegation() {
         for (String form : List.of("retry", "retries", "retrying")) {
-            KnowledgeCitation citation = citation(
-                    "The gateway operates without " + form + " for failed requests.");
+            KnowledgeCitation citation = citation("The gateway operates without " + form + " for failed requests.");
             String arguments = issue("Gateway retry", "The gateway retries failed requests.");
 
             assertFalse(KnowledgeEvidencePolicy.supportsDraftClaims(arguments, List.of(citation)), form);
@@ -254,8 +248,7 @@ class KnowledgeEvidencePolicyTest {
     @Test
     void treatsAvoidRetryFormsAsActionNegation() {
         for (String form : List.of("avoids", "avoided", "avoiding", "avoid")) {
-            KnowledgeCitation citation = citation(
-                    "The gateway " + form + " retries for failed requests.");
+            KnowledgeCitation citation = citation("The gateway " + form + " retries for failed requests.");
             String arguments = issue("Gateway retry", "The gateway retries failed requests.");
 
             assertFalse(KnowledgeEvidencePolicy.supportsDraftClaims(arguments, List.of(citation)), form);
@@ -284,8 +277,7 @@ class KnowledgeEvidencePolicyTest {
 
     @Test
     void distinguishesNotLackingRetrySupportFromLackingIt() {
-        KnowledgeCitation positiveEvidence = citation(
-                "The gateway is not lacking retry support for failed requests.");
+        KnowledgeCitation positiveEvidence = citation("The gateway is not lacking retry support for failed requests.");
         KnowledgeCitation negativeEvidence = citation("The gateway is lacking retry support for failed requests.");
 
         assertTrue(KnowledgeEvidencePolicy.supportsDraftClaims(
@@ -304,41 +296,38 @@ class KnowledgeEvidencePolicyTest {
 
     @Test
     void treatsNegatedRetryRefusalAndInabilityPhrasesAsPositive() {
-        List<String[]> cases = List.of(
-                new String[] {"Gateways do not avoid retries for failed requests.", "Gateways",
-                        "Gateways do not avoid retries for failed requests.",
-                        "Gateways avoid retries for failed requests."},
-                new String[] {"The gateway is not avoiding retries for failed requests.", "Gateway retry",
+        List<String[]> cases = List.of(new String[]{"Gateways do not avoid retries for failed requests.", "Gateways",
+                "Gateways do not avoid retries for failed requests.", "Gateways avoid retries for failed requests."},
+                new String[]{"The gateway is not avoiding retries for failed requests.", "Gateway retry",
                         "The gateway is not avoiding retries for failed requests.",
                         "The gateway is avoiding retries for failed requests."},
-                new String[] {"The gateway is not refusing to retry failed requests.",
-                        "Gateway retry", "The gateway is not refusing to retry failed requests.",
+                new String[]{"The gateway is not refusing to retry failed requests.", "Gateway retry",
+                        "The gateway is not refusing to retry failed requests.",
                         "The gateway is refusing to retry failed requests."},
-                new String[] {"The gateway is not unable to retry failed requests.",
-                        "Gateway retry", "The gateway is not unable to retry failed requests.",
+                new String[]{"The gateway is not unable to retry failed requests.", "Gateway retry",
+                        "The gateway is not unable to retry failed requests.",
                         "The gateway is unable to retry failed requests."},
-                new String[] {"The gateway is not stopping retries for failed requests.",
-                        "Gateway retry", "The gateway is not stopping retries for failed requests.",
+                new String[]{"The gateway is not stopping retries for failed requests.", "Gateway retry",
+                        "The gateway is not stopping retries for failed requests.",
                         "The gateway is stopping retries for failed requests."},
-                new String[] {"The gateway is not refraining from retrying failed requests.",
-                        "Gateway retrying", "The gateway is not refraining from retrying failed requests.",
+                new String[]{"The gateway is not refraining from retrying failed requests.", "Gateway retrying",
+                        "The gateway is not refraining from retrying failed requests.",
                         "The gateway is refraining from retrying failed requests."},
-                new String[] {"The gateway does not lack the ability to retry failed requests.",
-                        "Gateway retry", "The gateway retries failed requests.",
+                new String[]{"The gateway does not lack the ability to retry failed requests.", "Gateway retry",
+                        "The gateway retries failed requests.",
                         "The gateway lacks the ability to retry failed requests."},
-                new String[] {"The gateway does not stop attempts to retry failed requests.",
-                        "Gateway retry", "The gateway retries failed requests.",
-                        "The gateway stops attempts to retry failed requests."},
-                new String[] {"The gateway does not refrain from initiating retries for failed requests.",
+                new String[]{"The gateway does not stop attempts to retry failed requests.", "Gateway retry",
+                        "The gateway retries failed requests.", "The gateway stops attempts to retry failed requests."},
+                new String[]{"The gateway does not refrain from initiating retries for failed requests.",
                         "Gateway retry", "The gateway retries failed requests.",
                         "The gateway refrains from initiating retries for failed requests."});
 
         for (String[] testCase : cases) {
             KnowledgeCitation citation = citation(testCase[0]);
-            assertTrue(KnowledgeEvidencePolicy.supportsDraftClaims(issue(testCase[1], testCase[2]),
-                    List.of(citation)), testCase[0] + " should support continued retries");
-            assertFalse(KnowledgeEvidencePolicy.supportsDraftClaims(issue(testCase[1], testCase[3]),
-                    List.of(citation)), testCase[0] + " must not support its opposite");
+            assertTrue(KnowledgeEvidencePolicy.supportsDraftClaims(issue(testCase[1], testCase[2]), List.of(citation)),
+                    testCase[0] + " should support continued retries");
+            assertFalse(KnowledgeEvidencePolicy.supportsDraftClaims(issue(testCase[1], testCase[3]), List.of(citation)),
+                    testCase[0] + " must not support its opposite");
         }
     }
 
@@ -366,15 +355,15 @@ class KnowledgeEvidencePolicyTest {
     @Test
     void treatsDoNotStopAndDoNotRefrainFromRetryingAsPositive() {
         List<String[]> cases = List.of(
-                new String[] {"The gateway does not stop retrying failed requests.",
+                new String[]{"The gateway does not stop retrying failed requests.",
                         "The gateway stops retrying failed requests."},
-                new String[] {"The gateway does not refrain from retrying failed requests.",
+                new String[]{"The gateway does not refrain from retrying failed requests.",
                         "The gateway refrains from retrying failed requests."});
         for (String[] testCase : cases) {
             String evidence = testCase[0];
             assertTrue(KnowledgeEvidencePolicy.supportsDraftClaims(
-                    issue("Gateway retrying", "The gateway is retrying failed requests."),
-                    List.of(citation(evidence))), evidence);
+                    issue("Gateway retrying", "The gateway is retrying failed requests."), List.of(citation(evidence))),
+                    evidence);
             assertFalse(KnowledgeEvidencePolicy.supportsDraftClaims(issue("Gateway retrying", testCase[1]),
                     List.of(citation(evidence))), evidence + " must not support its opposite");
         }
@@ -391,33 +380,33 @@ class KnowledgeEvidencePolicyTest {
     @Test
     void treatsRefusalAndCessationOfRetryAsActionNegation() {
         List<String[]> cases = List.of(
-                new String[] {"The gateway refuses to retry failed requests.", "Gateway retry",
+                new String[]{"The gateway refuses to retry failed requests.", "Gateway retry",
                         "The gateway retries failed requests."},
-                new String[] {"The gateway stops retrying failed requests.", "Gateway retrying",
+                new String[]{"The gateway stops retrying failed requests.", "Gateway retrying",
                         "The gateway is retrying failed requests."},
-                new String[] {"The gateway refrains from retrying failed requests.", "Gateway retrying",
+                new String[]{"The gateway refrains from retrying failed requests.", "Gateway retrying",
                         "The gateway is retrying failed requests."},
-                new String[] {"Workers stop retrying failed requests.", "Workers",
+                new String[]{"Workers stop retrying failed requests.", "Workers",
                         "Workers are retrying failed requests."},
-                new String[] {"Workers refrain from retrying failed requests.", "Workers",
+                new String[]{"Workers refrain from retrying failed requests.", "Workers",
                         "Workers are retrying failed requests."});
 
         for (String[] testCase : cases) {
             KnowledgeCitation citation = citation(testCase[0]);
-            assertFalse(KnowledgeEvidencePolicy.supportsDraftClaims(issue(testCase[1], testCase[2]),
-                    List.of(citation)), testCase[0]);
+            assertFalse(KnowledgeEvidencePolicy.supportsDraftClaims(issue(testCase[1], testCase[2]), List.of(citation)),
+                    testCase[0]);
         }
     }
 
     @Test
     void treatsInterveningRetryActionWordsAsActionNegation() {
         List<String[]> cases = List.of(
-                new String[] {"The gateway lacks the ability to retry failed requests.", "Gateway retry",
+                new String[]{"The gateway lacks the ability to retry failed requests.", "Gateway retry",
                         "The gateway retries failed requests."},
-                new String[] {"The gateway stops attempts to retry failed requests.", "Gateway retry",
+                new String[]{"The gateway stops attempts to retry failed requests.", "Gateway retry",
                         "The gateway retries failed requests."},
-                new String[] {"The gateway refrains from initiating retries for failed requests.",
-                        "Gateway retry", "The gateway retries failed requests."});
+                new String[]{"The gateway refrains from initiating retries for failed requests.", "Gateway retry",
+                        "The gateway retries failed requests."});
 
         for (String[] testCase : cases) {
             assertFalse(KnowledgeEvidencePolicy.supportsDraftClaims(issue(testCase[1], testCase[2]),
@@ -446,8 +435,7 @@ class KnowledgeEvidencePolicyTest {
 
         assertFalse(KnowledgeEvidencePolicy.supportsDraftClaims(
                 issue("Gateway retrying", "The gateway is retrying failed requests."), List.of(citation)));
-        KnowledgeCitation doubleNegatedCitation = citation(
-                "The gateway is not incapable of retrying failed requests.");
+        KnowledgeCitation doubleNegatedCitation = citation("The gateway is not incapable of retrying failed requests.");
         assertTrue(KnowledgeEvidencePolicy.supportsDraftClaims(
                 issue("Gateway retrying", "The gateway is retrying failed requests."), List.of(doubleNegatedCitation)));
         assertFalse(KnowledgeEvidencePolicy.supportsDraftClaims(
@@ -460,15 +448,16 @@ class KnowledgeEvidencePolicyTest {
         for (String action : List.of("keep retrying", "perform retries", "attempt to retry", "initiate retries")) {
             KnowledgeCitation citation = citation("The gateway is unable to " + action + " failed requests.");
 
-            assertFalse(KnowledgeEvidencePolicy.supportsDraftClaims(
-                    issue("Gateway retrying", "The gateway is retrying failed requests."), List.of(citation)), action);
+            assertFalse(
+                    KnowledgeEvidencePolicy.supportsDraftClaims(
+                            issue("Gateway retrying", "The gateway is retrying failed requests."), List.of(citation)),
+                    action);
         }
     }
 
     @Test
     void treatsChainedAndGerundRetryInabilityAsActionNegation() {
-        for (String evidence : List.of(
-                "The gateway is unable to continue performing retries for failed requests.",
+        for (String evidence : List.of("The gateway is unable to continue performing retries for failed requests.",
                 "The gateway is incapable of initiating retries for failed requests.",
                 "The gateway is unable to successfully retry failed requests.")) {
             assertFalse(KnowledgeEvidencePolicy.supportsDraftClaims(
@@ -508,28 +497,27 @@ class KnowledgeEvidencePolicyTest {
     @Test
     void treatsDecliningToRetryAsActionNegation() {
         List<String[]> cases = List.of(
-                new String[] {"The gateway declines to retry failed requests.", "Gateway retry",
+                new String[]{"The gateway declines to retry failed requests.", "Gateway retry",
                         "The gateway retries failed requests.", "The gateway does not retry failed requests."},
-                new String[] {"The gateway declines to initiate retries for failed requests.", "Gateway retries",
+                new String[]{"The gateway declines to initiate retries for failed requests.", "Gateway retries",
                         "The gateway can initiate retries for failed requests.",
                         "The gateway does not initiate retries for failed requests."},
-                new String[] {"The gateway refuses to initiate retries for failed requests.", "Gateway retries",
+                new String[]{"The gateway refuses to initiate retries for failed requests.", "Gateway retries",
                         "The gateway can initiate retries for failed requests.",
                         "The gateway does not initiate retries for failed requests."});
         for (String[] testCase : cases) {
             KnowledgeCitation citation = citation(testCase[0]);
 
-            assertFalse(KnowledgeEvidencePolicy.supportsDraftClaims(
-                    issue(testCase[1], testCase[2]), List.of(citation)), testCase[0]);
-            assertTrue(KnowledgeEvidencePolicy.supportsDraftClaims(
-                    issue(testCase[1], testCase[3]), List.of(citation)), testCase[0]);
+            assertFalse(KnowledgeEvidencePolicy.supportsDraftClaims(issue(testCase[1], testCase[2]), List.of(citation)),
+                    testCase[0]);
+            assertTrue(KnowledgeEvidencePolicy.supportsDraftClaims(issue(testCase[1], testCase[3]), List.of(citation)),
+                    testCase[0]);
         }
     }
 
     @Test
     void treatsNotDecliningToRetryAsPositiveEvidence() {
-        for (String evidence : List.of(
-                "The gateway does not decline to initiate retries for failed requests.",
+        for (String evidence : List.of("The gateway does not decline to initiate retries for failed requests.",
                 "The gateway does not refuse to initiate retries for failed requests.")) {
             KnowledgeCitation citation = citation(evidence);
 
@@ -555,52 +543,51 @@ class KnowledgeEvidencePolicyTest {
     @Test
     void treatsPreventingRetriesAsActionNegation() {
         List<String[]> cases = List.of(
-                new String[] {"The gateway prevents retries for failed requests.", "Gateway retries",
+                new String[]{"The gateway prevents retries for failed requests.", "Gateway retries",
                         "The gateway retries failed requests.", "The gateway does not retry failed requests."},
-                new String[] {"Circuit breakers prevent the gateway from retrying failed requests.",
-                        "Gateway retrying", "The gateway is retrying failed requests.",
-                        "The gateway is not retrying failed requests."},
-                new String[] {"The gateway is prevented from retrying failed requests.", "Gateway retrying",
+                new String[]{"Circuit breakers prevent the gateway from retrying failed requests.", "Gateway retrying",
                         "The gateway is retrying failed requests.", "The gateway is not retrying failed requests."},
-                new String[] {"The gateway is prevented by a circuit breaker from retrying failed requests.",
+                new String[]{"The gateway is prevented from retrying failed requests.", "Gateway retrying",
+                        "The gateway is retrying failed requests.", "The gateway is not retrying failed requests."},
+                new String[]{"The gateway is prevented by a circuit breaker from retrying failed requests.",
                         "Gateway retrying", "The gateway is retrying failed requests.",
                         "The gateway is not retrying failed requests."},
-                new String[] {"Circuit breakers prevent the gateway from ever retrying failed requests.",
+                new String[]{"Circuit breakers prevent the gateway from ever retrying failed requests.",
                         "Gateway retrying", "The gateway is retrying failed requests.",
                         "The gateway is not retrying failed requests."});
         for (String[] testCase : cases) {
             KnowledgeCitation citation = citation(testCase[0]);
 
-            assertFalse(KnowledgeEvidencePolicy.supportsDraftClaims(
-                    issue(testCase[1], testCase[2]), List.of(citation)), testCase[0]);
-            assertTrue(KnowledgeEvidencePolicy.supportsDraftClaims(
-                    issue(testCase[1], testCase[3]), List.of(citation)), testCase[0]);
+            assertFalse(KnowledgeEvidencePolicy.supportsDraftClaims(issue(testCase[1], testCase[2]), List.of(citation)),
+                    testCase[0]);
+            assertTrue(KnowledgeEvidencePolicy.supportsDraftClaims(issue(testCase[1], testCase[3]), List.of(citation)),
+                    testCase[0]);
         }
     }
 
     @Test
     void treatsNotPreventingRetriesAsPositiveEvidence() {
         List<String[]> cases = List.of(
-                new String[] {"The gateway does not prevent retries for failed requests.", "Gateway retries",
+                new String[]{"The gateway does not prevent retries for failed requests.", "Gateway retries",
                         "The gateway retries failed requests.", "The gateway does not retry failed requests."},
-                new String[] {"The gateway does not prevent the gateway from retrying failed requests.",
+                new String[]{"The gateway does not prevent the gateway from retrying failed requests.",
                         "Gateway retrying", "The gateway is retrying failed requests.",
                         "The gateway is not retrying failed requests."},
-                new String[] {"The gateway does not prevent the gateway from ever retrying failed requests.",
+                new String[]{"The gateway does not prevent the gateway from ever retrying failed requests.",
                         "Gateway retrying", "The gateway is retrying failed requests.",
                         "The gateway is not retrying failed requests."},
-                new String[] {"The gateway is not prevented from retrying failed requests.", "Gateway retrying",
+                new String[]{"The gateway is not prevented from retrying failed requests.", "Gateway retrying",
                         "The gateway is retrying failed requests.", "The gateway is not retrying failed requests."},
-                new String[] {"The gateway is not prevented by a circuit breaker from retrying failed requests.",
+                new String[]{"The gateway is not prevented by a circuit breaker from retrying failed requests.",
                         "Gateway retrying", "The gateway is retrying failed requests.",
                         "The gateway is not retrying failed requests."});
         for (String[] testCase : cases) {
             KnowledgeCitation citation = citation(testCase[0]);
 
-            assertTrue(KnowledgeEvidencePolicy.supportsDraftClaims(
-                    issue(testCase[1], testCase[2]), List.of(citation)), testCase[0]);
-            assertFalse(KnowledgeEvidencePolicy.supportsDraftClaims(
-                    issue(testCase[1], testCase[3]), List.of(citation)), testCase[0]);
+            assertTrue(KnowledgeEvidencePolicy.supportsDraftClaims(issue(testCase[1], testCase[2]), List.of(citation)),
+                    testCase[0]);
+            assertFalse(KnowledgeEvidencePolicy.supportsDraftClaims(issue(testCase[1], testCase[3]), List.of(citation)),
+                    testCase[0]);
         }
     }
 
@@ -624,45 +611,43 @@ class KnowledgeEvidencePolicyTest {
     @Test
     void treatsPreventingNegatedRetryActionAsPositiveEvidence() {
         List<String[]> cases = List.of(
-                new String[] {"Circuit breakers prevent the gateway from not retrying failed requests.",
+                new String[]{"Circuit breakers prevent the gateway from not retrying failed requests.",
                         "Gateway retrying", "The gateway is retrying failed requests.",
                         "The gateway is not retrying failed requests."},
-                new String[] {"The gateway is prevented by a circuit breaker from not retrying failed requests.",
+                new String[]{"The gateway is prevented by a circuit breaker from not retrying failed requests.",
                         "Gateway retrying", "The gateway is retrying failed requests.",
                         "The gateway is not retrying failed requests."},
-                new String[] {"Circuit breakers prevent the gateway from failing to retry failed requests.",
+                new String[]{"Circuit breakers prevent the gateway from failing to retry failed requests.",
                         "Gateway retry", "The gateway retries failed requests.",
                         "The gateway does not retry failed requests."},
-                new String[] {"The gateway is prevented by a circuit breaker from failing to retry failed requests.",
+                new String[]{"The gateway is prevented by a circuit breaker from failing to retry failed requests.",
                         "Gateway retry", "The gateway retries failed requests.",
                         "The gateway does not retry failed requests."},
-                new String[] {"Circuit breakers prevent the retry handler from not retrying failed requests.",
+                new String[]{"Circuit breakers prevent the retry handler from not retrying failed requests.",
                         "Retry handler retrying", "The retry handler is retrying failed requests.",
                         "The retry handler is not retrying failed requests."},
-                new String[] {"The policy prevents clients from failing to retry failed requests.",
-                        "Clients retry", "Clients retry failed requests.",
-                        "Clients do not retry failed requests."});
+                new String[]{"The policy prevents clients from failing to retry failed requests.", "Clients retry",
+                        "Clients retry failed requests.", "Clients do not retry failed requests."});
         for (String[] testCase : cases) {
             KnowledgeCitation citation = citation(testCase[0]);
 
-            assertTrue(KnowledgeEvidencePolicy.supportsDraftClaims(
-                    issue(testCase[1], testCase[2]), List.of(citation)), testCase[0]);
-            assertFalse(KnowledgeEvidencePolicy.supportsDraftClaims(
-                    issue(testCase[1], testCase[3]), List.of(citation)), testCase[0]);
+            assertTrue(KnowledgeEvidencePolicy.supportsDraftClaims(issue(testCase[1], testCase[2]), List.of(citation)),
+                    testCase[0]);
+            assertFalse(KnowledgeEvidencePolicy.supportsDraftClaims(issue(testCase[1], testCase[3]), List.of(citation)),
+                    testCase[0]);
         }
     }
 
     @Test
     void keepsThePreventedTargetBoundToItsSubject() {
-        KnowledgeCitation citation = citation(
-                "The gateway prevents the cache from not retrying failed requests.");
+        KnowledgeCitation citation = citation("The gateway prevents the cache from not retrying failed requests.");
 
         assertFalse(KnowledgeEvidencePolicy.supportsDraftClaims(
                 issue("Gateway retrying", "The gateway is retrying failed requests."), List.of(citation)));
         assertTrue(KnowledgeEvidencePolicy.supportsDraftClaims(
                 issue("Cache retrying", "The cache is retrying failed requests."), List.of(citation)));
-        assertFalse(KnowledgeEvidencePolicy.supportsDraftClaims(issue("Gateway can retry",
-                "The gateway can retry when the cache retries."), List.of(citation)));
+        assertFalse(KnowledgeEvidencePolicy.supportsDraftClaims(
+                issue("Gateway can retry", "The gateway can retry when the cache retries."), List.of(citation)));
 
         KnowledgeCitation nounOnlyRetry = citation("The gateway retry policy covers failed requests.");
         assertFalse(KnowledgeEvidencePolicy.supportsDraftClaims(
@@ -679,8 +664,7 @@ class KnowledgeEvidencePolicyTest {
                 "The gateway retry policy allows infinite retries for failed requests.");
         assertFalse(KnowledgeEvidencePolicy.supportsDraftClaims(
                 issue("Gateway retries", "The gateway retries failed requests."), List.of(infiniteRetryNoun)));
-        KnowledgeCitation constrainedRetryNoun = citation(
-                "The gateway retries are limited to three failed requests.");
+        KnowledgeCitation constrainedRetryNoun = citation("The gateway retries are limited to three failed requests.");
         assertFalse(KnowledgeEvidencePolicy.supportsDraftClaims(
                 issue("Gateway retries", "The gateway retries failed requests."), List.of(constrainedRetryNoun)));
         KnowledgeCitation labeledRetryCount = citation("The gateway retries: 3 attempts for failed requests.");
@@ -698,47 +682,48 @@ class KnowledgeEvidencePolicyTest {
                 "The gateway retries can be set to unlimited for failed requests.");
         assertFalse(KnowledgeEvidencePolicy.supportsDraftClaims(
                 issue("Gateway retries", "The gateway retries failed requests."), List.of(modalSetRetryNoun)));
-        KnowledgeCitation modalEnabledRetryNoun = citation(
-                "The gateway retries can be enabled for failed requests.");
+        KnowledgeCitation modalEnabledRetryNoun = citation("The gateway retries can be enabled for failed requests.");
         assertFalse(KnowledgeEvidencePolicy.supportsDraftClaims(
                 issue("Gateway retries", "The gateway retries failed requests."), List.of(modalEnabledRetryNoun)));
         KnowledgeCitation modalRemainingRetryNoun = citation(
                 "The gateway retries should remain unlimited for failed requests.");
         assertFalse(KnowledgeEvidencePolicy.supportsDraftClaims(
                 issue("Gateway retries", "The gateway retries failed requests."), List.of(modalRemainingRetryNoun)));
-        KnowledgeCitation modalPossibleRetryNoun = citation(
-                "The gateway retries may occur for failed requests.");
+        KnowledgeCitation modalPossibleRetryNoun = citation("The gateway retries may occur for failed requests.");
         assertFalse(KnowledgeEvidencePolicy.supportsDraftClaims(
                 issue("Gateway retries", "The gateway retries failed requests."), List.of(modalPossibleRetryNoun)));
         KnowledgeCitation emptyRetryCount = citation("The gateway retries: none for failed requests.");
         assertFalse(KnowledgeEvidencePolicy.supportsDraftClaims(
                 issue("Gateway retries", "The gateway retries failed requests."), List.of(emptyRetryCount)));
 
-        KnowledgeCitation retryPolicyAndSubordinateRetry = citation("The gateway retry policy prevents the cache "
-                + "from not retrying requests when the cache retries.");
-        assertFalse(KnowledgeEvidencePolicy.supportsDraftClaims(issue("Gateway retries",
-                "The gateway retries requests when the cache retries."), List.of(retryPolicyAndSubordinateRetry)));
+        KnowledgeCitation retryPolicyAndSubordinateRetry = citation(
+                "The gateway retry policy prevents the cache " + "from not retrying requests when the cache retries.");
+        assertFalse(KnowledgeEvidencePolicy.supportsDraftClaims(
+                issue("Gateway retries", "The gateway retries requests when the cache retries."),
+                List.of(retryPolicyAndSubordinateRetry)));
 
         KnowledgeCitation nounAfterPredicate = citation("The gateway retry controller prevents the cache from not "
                 + "retrying requests for the cache retry controller.");
-        assertFalse(KnowledgeEvidencePolicy.supportsDraftClaims(issue("Gateway retry controller retrying",
-                "The gateway retry controller is retrying requests for the cache retry controller."),
+        assertFalse(KnowledgeEvidencePolicy.supportsDraftClaims(
+                issue("Gateway retry controller retrying",
+                        "The gateway retry controller is retrying requests for the cache retry controller."),
                 List.of(nounAfterPredicate)));
 
         KnowledgeCitation pluralRetryHandlers = citation(
                 "Circuit breakers prevent the retry handlers from not retrying failed requests.");
-        assertTrue(KnowledgeEvidencePolicy.supportsDraftClaims(issue("Retry handlers retry",
-                "The retry handlers retry failed requests."), List.of(pluralRetryHandlers)));
+        assertTrue(KnowledgeEvidencePolicy.supportsDraftClaims(
+                issue("Retry handlers retry", "The retry handlers retry failed requests."),
+                List.of(pluralRetryHandlers)));
     }
 
     @Test
     void preservesRetryModalityAndRejectsEmptyCountLabels() {
-        for (String possibleAction : List.of(
-                "The gateway can retry failed requests.",
+        for (String possibleAction : List.of("The gateway can retry failed requests.",
                 "The gateway may retry failed requests.")) {
             KnowledgeCitation citation = citation(possibleAction);
-            assertFalse(KnowledgeEvidencePolicy.supportsDraftClaims(
-                    issue("Gateway retry", "The gateway retries failed requests."), List.of(citation)),
+            assertFalse(
+                    KnowledgeEvidencePolicy.supportsDraftClaims(
+                            issue("Gateway retry", "The gateway retries failed requests."), List.of(citation)),
                     possibleAction);
         }
 
@@ -768,11 +753,11 @@ class KnowledgeEvidencePolicyTest {
         assertTrue(KnowledgeEvidencePolicy.supportsDraftClaims(
                 issue("Gateway retry", "The gateway will be capable of retrying failed requests."),
                 List.of(futureCapability)));
-        for (String uncertainInability : List.of(
-                "may not be capable of retrying", "might be incapable of retrying")) {
+        for (String uncertainInability : List.of("may not be capable of retrying", "might be incapable of retrying")) {
             KnowledgeCitation citation = citation("The gateway " + uncertainInability + " failed requests.");
-            assertFalse(KnowledgeEvidencePolicy.supportsDraftClaims(
-                    issue("Gateway retry", "The gateway does not retry failed requests."), List.of(citation)),
+            assertFalse(
+                    KnowledgeEvidencePolicy.supportsDraftClaims(
+                            issue("Gateway retry", "The gateway does not retry failed requests."), List.of(citation)),
                     uncertainInability);
             assertTrue(KnowledgeEvidencePolicy.supportsDraftClaims(
                     issue("Gateway retry", "The gateway " + uncertainInability + " failed requests."),
@@ -782,10 +767,10 @@ class KnowledgeEvidencePolicyTest {
         KnowledgeCitation unconfigurableRetryNoun = citation(
                 "The gateway retries cannot be configured for failed requests.");
         assertFalse(KnowledgeEvidencePolicy.supportsDraftClaims(
-                issue("Gateway retry", "The gateway does not retry failed requests."), List.of(unconfigurableRetryNoun)));
+                issue("Gateway retry", "The gateway does not retry failed requests."),
+                List.of(unconfigurableRetryNoun)));
 
-        KnowledgeCitation emptyRetryLabel = citation(
-                "The gateway retries: no retries for failed requests.");
+        KnowledgeCitation emptyRetryLabel = citation("The gateway retries: no retries for failed requests.");
         assertFalse(KnowledgeEvidencePolicy.supportsDraftClaims(
                 issue("Gateway retry", "The gateway retries failed requests."), List.of(emptyRetryLabel)));
     }
@@ -795,8 +780,10 @@ class KnowledgeEvidencePolicyTest {
         for (String infinitive : List.of("is configured to retry", "plans to retry")) {
             KnowledgeCitation citation = citation("The gateway " + infinitive + " failed requests.");
 
-            assertFalse(KnowledgeEvidencePolicy.supportsDraftClaims(
-                    issue("Gateway retry", "The gateway retries failed requests."), List.of(citation)), infinitive);
+            assertFalse(
+                    KnowledgeEvidencePolicy.supportsDraftClaims(
+                            issue("Gateway retry", "The gateway retries failed requests."), List.of(citation)),
+                    infinitive);
             assertTrue(KnowledgeEvidencePolicy.supportsDraftClaims(
                     issue("Gateway retry", "The gateway " + infinitive + " failed requests."), List.of(citation)),
                     infinitive);
@@ -809,14 +796,14 @@ class KnowledgeEvidencePolicyTest {
 
     @Test
     void preservesModalAndIntentMeaningForInflectedRetryActions() {
-        for (String phrase : List.of(
-                "will be retrying", "is planning on retrying", "is planning on eventually retrying",
-                "may not be retrying")) {
+        for (String phrase : List.of("will be retrying", "is planning on retrying",
+                "is planning on eventually retrying", "may not be retrying")) {
             KnowledgeCitation citation = citation("The gateway " + phrase + " failed requests.");
             assertFalse(KnowledgeEvidencePolicy.supportsDraftClaims(
                     issue("Gateway retry", "The gateway retries failed requests."), List.of(citation)), phrase);
-            assertTrue(KnowledgeEvidencePolicy.supportsDraftClaims(
-                    issue("Gateway retry", "The gateway " + phrase + " failed requests."), List.of(citation)),
+            assertTrue(
+                    KnowledgeEvidencePolicy.supportsDraftClaims(
+                            issue("Gateway retry", "The gateway " + phrase + " failed requests."), List.of(citation)),
                     phrase);
         }
 
@@ -827,14 +814,14 @@ class KnowledgeEvidencePolicyTest {
 
     @Test
     void preservesModalMeaningAcrossNegationAndAdverbs() {
-        for (String phrase : List.of(
-                "may still retry", "may not retry", "may occasionally retry", "may continue retrying",
-                "may keep retrying", "will probably retry")) {
+        for (String phrase : List.of("may still retry", "may not retry", "may occasionally retry",
+                "may continue retrying", "may keep retrying", "will probably retry")) {
             KnowledgeCitation citation = citation("The gateway " + phrase + " failed requests.");
             assertFalse(KnowledgeEvidencePolicy.supportsDraftClaims(
                     issue("Gateway retry", "The gateway retries failed requests."), List.of(citation)), phrase);
-            assertTrue(KnowledgeEvidencePolicy.supportsDraftClaims(
-                    issue("Gateway retry", "The gateway " + phrase + " failed requests."), List.of(citation)),
+            assertTrue(
+                    KnowledgeEvidencePolicy.supportsDraftClaims(
+                            issue("Gateway retry", "The gateway " + phrase + " failed requests."), List.of(citation)),
                     phrase);
         }
 
@@ -849,8 +836,7 @@ class KnowledgeEvidencePolicyTest {
 
     @Test
     void doesNotTreatQualifiedInabilityAsAbsoluteRetryDenial() {
-        for (String claim : List.of(
-                "The gateway cannot always retry failed requests.",
+        for (String claim : List.of("The gateway cannot always retry failed requests.",
                 "The gateway cannot usually retry failed requests.",
                 "The gateway cannot reliably retry failed requests.",
                 "The gateway cannot successfully retry failed requests.",
@@ -858,8 +844,7 @@ class KnowledgeEvidencePolicyTest {
                 "The gateway cannot keep retrying failed requests.",
                 "The gateway cannot retry failed requests reliably.",
                 "The gateway cannot retry failed requests successfully.",
-                "The gateway cannot retry all failed requests.",
-                "The gateway cannot retry in every case.",
+                "The gateway cannot retry all failed requests.", "The gateway cannot retry in every case.",
                 "The gateway cannot retry the entire batch.",
                 "The gateway cannot retry failed requests unless configured.",
                 "The gateway cannot retry failed requests after a timeout.",
@@ -880,18 +865,18 @@ class KnowledgeEvidencePolicyTest {
                 "The gateway cannot retry failed requests under heavy load.")) {
             KnowledgeCitation citation = citation(claim);
 
-            assertFalse(KnowledgeEvidencePolicy.supportsDraftClaims(
-                    issue("Gateway retry", "The gateway does not retry failed requests."), List.of(citation)),
+            assertFalse(
+                    KnowledgeEvidencePolicy.supportsDraftClaims(
+                            issue("Gateway retry", "The gateway does not retry failed requests."), List.of(citation)),
                     claim);
-            assertTrue(KnowledgeEvidencePolicy.supportsDraftClaims(
-                    issue("Gateway retry", claim), List.of(citation)), claim);
+            assertTrue(KnowledgeEvidencePolicy.supportsDraftClaims(issue("Gateway retry", claim), List.of(citation)),
+                    claim);
         }
 
         KnowledgeCitation noRequestCanRetry = citation("The gateway cannot retry any failed requests.");
         assertTrue(KnowledgeEvidencePolicy.supportsDraftClaims(
                 issue("Gateway retry", "The gateway does not retry failed requests."), List.of(noRequestCanRetry)));
-        for (String citationText : List.of(
-                "The gateway certainly cannot retry failed requests.",
+        for (String citationText : List.of("The gateway certainly cannot retry failed requests.",
                 "Certainly, the gateway cannot retry failed requests.",
                 "With certainty, the gateway refuses to retry failed requests.",
                 "Without fail, the gateway refuses to retry failed requests.",
@@ -907,20 +892,20 @@ class KnowledgeEvidencePolicyTest {
     @Test
     void preservesScopeAcrossPositiveRetryAssertions() {
         for (String[] testCase : List.of(
-                new String[] {"The gateway retries failed requests in production.",
+                new String[]{"The gateway retries failed requests in production.",
                         "The gateway retries failed requests.", "The gateway retries failed requests in production."},
-                new String[] {"The gateway does not stop retrying failed requests in production.",
+                new String[]{"The gateway does not stop retrying failed requests in production.",
                         "The gateway retries failed requests.", "The gateway retries failed requests in production."},
-                new String[] {"The gateway can retry failed requests in production.",
-                        "The gateway can retry failed requests.", "The gateway can retry failed requests in production."})) {
-            assertFalse(KnowledgeEvidencePolicy.supportsDraftClaims(
-                    issue("Gateway retry", testCase[1]), List.of(citation(testCase[0]))), testCase[0]);
-            assertTrue(KnowledgeEvidencePolicy.supportsDraftClaims(
-                    issue("Gateway retry", testCase[2]), List.of(citation(testCase[0]))), testCase[0]);
+                new String[]{"The gateway can retry failed requests in production.",
+                        "The gateway can retry failed requests.",
+                        "The gateway can retry failed requests in production."})) {
+            assertFalse(KnowledgeEvidencePolicy.supportsDraftClaims(issue("Gateway retry", testCase[1]),
+                    List.of(citation(testCase[0]))), testCase[0]);
+            assertTrue(KnowledgeEvidencePolicy.supportsDraftClaims(issue("Gateway retry", testCase[2]),
+                    List.of(citation(testCase[0]))), testCase[0]);
         }
 
-        for (String citationText : List.of(
-                "The gateway retries failed requests one at a time.",
+        for (String citationText : List.of("The gateway retries failed requests one at a time.",
                 "The gateway retries failed requests one by one.")) {
             assertTrue(KnowledgeEvidencePolicy.supportsDraftClaims(
                     issue("Gateway retry", "The gateway retries failed requests."), List.of(citation(citationText))),
@@ -993,8 +978,7 @@ class KnowledgeEvidencePolicyTest {
         KnowledgeCitation citation = citation("The gateway retries failed requests with no retry limit.");
 
         assertTrue(KnowledgeEvidencePolicy.supportsDraftClaims(
-                issue("Gateway retry", "The gateway retries failed requests with no retry limit."),
-                List.of(citation)));
+                issue("Gateway retry", "The gateway retries failed requests with no retry limit."), List.of(citation)));
         assertFalse(KnowledgeEvidencePolicy.supportsDraftClaims(
                 issue("Gateway retry", "The gateway does not retry failed requests."), List.of(citation)));
     }
@@ -1005,10 +989,12 @@ class KnowledgeEvidencePolicyTest {
                 "without delay", "without a retry backoff", "without a retry back-off")) {
             KnowledgeCitation citation = citation("The gateway retries failed requests " + detail + ".");
 
-            assertTrue(KnowledgeEvidencePolicy.supportsDraftClaims(issue("Gateway retry",
-                    "The gateway retries failed requests " + detail + "."), List.of(citation)), detail);
-            assertFalse(KnowledgeEvidencePolicy.supportsDraftClaims(
-                    issue("Gateway retry", "The gateway does not retry failed requests."), List.of(citation)),
+            assertTrue(KnowledgeEvidencePolicy.supportsDraftClaims(
+                    issue("Gateway retry", "The gateway retries failed requests " + detail + "."), List.of(citation)),
+                    detail);
+            assertFalse(
+                    KnowledgeEvidencePolicy.supportsDraftClaims(
+                            issue("Gateway retry", "The gateway does not retry failed requests."), List.of(citation)),
                     detail);
         }
     }

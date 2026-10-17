@@ -78,13 +78,13 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 class AgentRunModelApprovalTest {
     private static final ObjectMapper JSON = new ObjectMapper();
     private static final String ARGUMENTS = "{\"repository\":\"KumiKo2007/hi-agent\",\"title\":\"Gateway retries\",\"body\":\"The gateway retries failed requests.\"}";
-    private static final Map<String, Object> SCHEMA = Map.of("type", "object", "properties", Map.of(
-            "repository", Map.of("type", "string"), "title", Map.of("type", "string"),
-            "body", Map.of("type", "string")),
+    private static final Map<String, Object> SCHEMA = Map.of("type", "object", "properties",
+            Map.of("repository", Map.of("type", "string"), "title", Map.of("type", "string"), "body",
+                    Map.of("type", "string")),
             "required", List.of("repository", "title", "body"), "additionalProperties", false);
     private static final JsonObjectSchema MCP_SCHEMA = JsonObjectSchema.builder().addStringProperty("repository")
-            .addStringProperty("title").addStringProperty("body")
-            .required("repository", "title", "body").additionalProperties(false).build();
+            .addStringProperty("title").addStringProperty("body").required("repository", "title", "body")
+            .additionalProperties(false).build();
 
     @Test
     void shouldRecordActualRetrievalAndModelUsageWithoutForwardingCredentialSentinels() {
@@ -101,18 +101,17 @@ class AgentRunModelApprovalTest {
             @Override
             public ChatResponse doChat(ChatRequest request) {
                 captured.set(request.messages());
-                return ChatResponse.builder().aiMessage(new AiMessage("answer"))
-                        .tokenUsage(new TokenUsage(11, 7)).build();
+                return ChatResponse.builder().aiMessage(new AiMessage("answer")).tokenUsage(new TokenUsage(11, 7))
+                        .build();
             }
         };
         KnowledgeCitation source = citation();
         source.setContent("Release notes. api_key=" + sentinel + " headers={\"Cookie\":\"" + cookieSentinel
                 + "\",\"User-Agent\":\"agentSentinelabcdefghijklmnopqrstuvwxyz\"}\n"
-                + "Retrieved metadata: {\"api_key\":\"" + jsonApiSentinel + "\",\"authorization\":\""
-                + jsonAuthSentinel + "\",\"headers\":{\"User-Agent\":\"" + jsonHeaderSentinel
-                + "\"},\"cookies\":{\"session\":\"" + jsonCookieSentinel + "\",\"refresh\":\""
-                + jsonNestedCookieSentinel + "\"}}\nIncomplete metadata: {\"api_key\":\""
-                + truncatedJsonSentinel + "\"");
+                + "Retrieved metadata: {\"api_key\":\"" + jsonApiSentinel + "\",\"authorization\":\"" + jsonAuthSentinel
+                + "\",\"headers\":{\"User-Agent\":\"" + jsonHeaderSentinel + "\"},\"cookies\":{\"session\":\""
+                + jsonCookieSentinel + "\",\"refresh\":\"" + jsonNestedCookieSentinel
+                + "\"}}\nIncomplete metadata: {\"api_key\":\"" + truncatedJsonSentinel + "\"");
         source.setDocumentId("doc-1");
         source.setFileId("file-1");
         source.setKnowledgeVersionId("knowledge-version");
@@ -137,9 +136,10 @@ class AgentRunModelApprovalTest {
         assertFalse(prompt.contains(truncatedJsonSentinel));
         assertEquals(List.of("KNOWLEDGE_RETRIEVAL", "KNOWLEDGE_SOURCE", "MODEL_CALL"),
                 events.stream().map(RunTimelineEventEntity::getEventType).toList());
-        assertTrue(events.stream().allMatch(event -> !event.getDetailsJson().contains(sentinel)
-                && !event.getDetailsJson().contains(cookieSentinel)
-                && !event.getDetailsJson().contains("agentSentinelabcdefghijklmnopqrstuvwxyz")));
+        assertTrue(events.stream()
+                .allMatch(event -> !event.getDetailsJson().contains(sentinel)
+                        && !event.getDetailsJson().contains(cookieSentinel)
+                        && !event.getDetailsJson().contains("agentSentinelabcdefghijklmnopqrstuvwxyz")));
         com.fasterxml.jackson.databind.JsonNode usage;
         try {
             usage = JSON.readTree(events.get(2).getDetailsJson());
@@ -157,10 +157,9 @@ class AgentRunModelApprovalTest {
         String argumentSentinel = "argumentSentinelabcdefghijklmnopqrstuvwxyz";
         String resultSentinel = "toolCookieSentinelabcdefghijklmnopqrstuvwxyz";
         Map<String, Object> readSchema = Map.of("type", "object", "properties",
-                Map.of("query", Map.of("type", "string")), "required", List.of("query"),
-                "additionalProperties", false);
-        JsonObjectSchema mcpReadSchema = JsonObjectSchema.builder().addStringProperty("query")
-                .required("query").additionalProperties(false).build();
+                Map.of("query", Map.of("type", "string")), "required", List.of("query"), "additionalProperties", false);
+        JsonObjectSchema mcpReadSchema = JsonObjectSchema.builder().addStringProperty("query").required("query")
+                .additionalProperties(false).build();
         RegisteredToolAction readAction = new RegisteredToolAction("service-1", "docs", "search_docs",
                 "Search documents", readSchema, ToolActionClassification.READ_ONLY);
         ToolSpecification spec = ToolSpecification.builder().name("search_docs").description("Search documents")
@@ -210,12 +209,12 @@ class AgentRunModelApprovalTest {
                 return List.of(action());
             }
         };
-        ToolBroker broker = new ToolBroker(catalog, (server, user) -> mcp,
-                (server, user, targetRepository) -> mcp, List.of(new GitHubMcpToolActionAdapter()));
+        ToolBroker broker = new ToolBroker(catalog, (server, user) -> mcp, (server, user, targetRepository) -> mcp,
+                List.of(new GitHubMcpToolActionAdapter()));
         String alias = "mcp_" + UUID.nameUUIDFromBytes("service-1:create_issue".getBytes(StandardCharsets.UTF_8))
                 .toString().replace("-", "");
-        ChatModel chatModel = new ProposingChatModel(ToolExecutionRequest.builder().id("request-1").name(alias)
-                .arguments(ARGUMENTS).build());
+        ChatModel chatModel = new ProposingChatModel(
+                ToolExecutionRequest.builder().id("request-1").name(alias).arguments(ARGUMENTS).build());
         AgentRunModel runModel = runModel(chatModel, broker);
 
         RunExecution result = runModel.executeWithActions(runWithTargetRepository());
@@ -224,8 +223,8 @@ class AgentRunModelApprovalTest {
         assertEquals("service-1", result.approvalRequest().serviceId());
         assertEquals("create_issue", result.approvalRequest().actionName());
         assertEquals("kumiko2007/hi-agent", result.approvalRequest().targetRepository());
-        assertTrue(result.approvalRequest().arguments().contains(
-                "The gateway retries failed requests.\\n\\n---\\n\\n### Sources"));
+        assertTrue(result.approvalRequest().arguments()
+                .contains("The gateway retries failed requests.\\n\\n---\\n\\n### Sources"));
         assertTrue(result.approvalRequest().arguments().contains("[S1] `release-notes.md`, page 2"));
         assertEquals(0, mcp.writeCalls.get());
     }
@@ -235,12 +234,17 @@ class AgentRunModelApprovalTest {
         TestMcpClient mcp = new TestMcpClient();
         RegisteredToolAction action = action();
         ToolActionCatalog catalog = new ToolActionCatalog() {
-            @Override public RegisteredToolAction require(AgentEntity agent, String userId, String serviceId,
-                    String actionName) { return action; }
-            @Override public List<RegisteredToolAction> list(AgentEntity agent, String userId) { return List.of(action); }
+            @Override
+            public RegisteredToolAction require(AgentEntity agent, String userId, String serviceId, String actionName) {
+                return action;
+            }
+            @Override
+            public List<RegisteredToolAction> list(AgentEntity agent, String userId) {
+                return List.of(action);
+            }
         };
-        ToolBroker broker = new ToolBroker(catalog, (server, user) -> mcp,
-                (server, user, targetRepository) -> mcp, List.of(new GitHubMcpToolActionAdapter()));
+        ToolBroker broker = new ToolBroker(catalog, (server, user) -> mcp, (server, user, targetRepository) -> mcp,
+                List.of(new GitHubMcpToolActionAdapter()));
         String alias = "mcp_" + UUID.nameUUIDFromBytes("service-1:create_issue".getBytes(StandardCharsets.UTF_8))
                 .toString().replace("-", "");
         RagVersionEntity version = new RagVersionEntity();
@@ -252,15 +256,21 @@ class AgentRunModelApprovalTest {
         document.setRagVersionId("knowledge-version");
         document.setRagVersionFileId("file-1");
         document.setContent("Please create an issue for the project and add it to the repository.");
-        KnowledgeSnapshotRetrievalService knowledge = new KnowledgeSnapshotRetrievalService(
-                proxy(RagVersionRepository.class, method -> method.getName().equals("selectOne")
-                        ? version : defaultValue(method.getReturnType())),
-                proxy(RagVersionDocumentRepository.class, method -> method.getName().equals("selectList")
-                        ? List.of(document) : defaultValue(method.getReturnType())),
-                proxy(RagVersionFileRepository.class, method -> method.getName().equals("selectList")
-                        ? List.of(new RagVersionFileEntity()) : defaultValue(method.getReturnType())));
-        AgentRunModel runModel = runModel(new ProposingChatModel(ToolExecutionRequest.builder().id("request-1")
-                .name(alias).arguments(ARGUMENTS).build()), broker, knowledge);
+        KnowledgeSnapshotRetrievalService knowledge = new KnowledgeSnapshotRetrievalService(proxy(
+                RagVersionRepository.class,
+                method -> method.getName().equals("selectOne") ? version : defaultValue(method.getReturnType())),
+                proxy(RagVersionDocumentRepository.class,
+                        method -> method.getName().equals("selectList")
+                                ? List.of(document)
+                                : defaultValue(method.getReturnType())),
+                proxy(RagVersionFileRepository.class,
+                        method -> method.getName().equals("selectList")
+                                ? List.of(new RagVersionFileEntity())
+                                : defaultValue(method.getReturnType())));
+        AgentRunModel runModel = runModel(
+                new ProposingChatModel(
+                        ToolExecutionRequest.builder().id("request-1").name(alias).arguments(ARGUMENTS).build()),
+                broker, knowledge);
 
         BusinessException exception = assertThrows(BusinessException.class,
                 () -> runModel.executeWithActions(runWithTargetRepository()));
@@ -273,8 +283,8 @@ class AgentRunModelApprovalTest {
         TestMcpClient mcp = new TestMcpClient();
         RegisteredToolAction action = action();
         ToolActionCatalog catalog = catalog(action);
-        ToolBroker broker = new ToolBroker(catalog, (server, user) -> mcp,
-                (server, user, targetRepository) -> mcp, List.of(new GitHubMcpToolActionAdapter()));
+        ToolBroker broker = new ToolBroker(catalog, (server, user) -> mcp, (server, user, targetRepository) -> mcp,
+                List.of(new GitHubMcpToolActionAdapter()));
         String alias = "mcp_" + UUID.nameUUIDFromBytes("service-1:create_issue".getBytes(StandardCharsets.UTF_8))
                 .toString().replace("-", "");
 
@@ -287,15 +297,21 @@ class AgentRunModelApprovalTest {
         document.setRagVersionId("knowledge-version");
         document.setRagVersionFileId("file-1");
         document.setContent("The database migration follows the existing backup procedure.");
-        KnowledgeSnapshotRetrievalService knowledge = new KnowledgeSnapshotRetrievalService(
-                proxy(RagVersionRepository.class, method -> method.getName().equals("selectOne")
-                        ? version : defaultValue(method.getReturnType())),
-                proxy(RagVersionDocumentRepository.class, method -> method.getName().equals("selectList")
-                        ? List.of(document) : defaultValue(method.getReturnType())),
-                proxy(RagVersionFileRepository.class, method -> method.getName().equals("selectList")
-                        ? List.of(new RagVersionFileEntity()) : defaultValue(method.getReturnType())));
-        AgentRunModel model = runModel(new ProposingChatModel(ToolExecutionRequest.builder().id("request-1")
-                .name(alias).arguments(ARGUMENTS).build()), broker, knowledge);
+        KnowledgeSnapshotRetrievalService knowledge = new KnowledgeSnapshotRetrievalService(proxy(
+                RagVersionRepository.class,
+                method -> method.getName().equals("selectOne") ? version : defaultValue(method.getReturnType())),
+                proxy(RagVersionDocumentRepository.class,
+                        method -> method.getName().equals("selectList")
+                                ? List.of(document)
+                                : defaultValue(method.getReturnType())),
+                proxy(RagVersionFileRepository.class,
+                        method -> method.getName().equals("selectList")
+                                ? List.of(new RagVersionFileEntity())
+                                : defaultValue(method.getReturnType())));
+        AgentRunModel model = runModel(
+                new ProposingChatModel(
+                        ToolExecutionRequest.builder().id("request-1").name(alias).arguments(ARGUMENTS).build()),
+                broker, knowledge);
         RunEntity run = runWithTargetRepository();
         run.setGoal("database migration, token rotation, recovery");
 
@@ -312,11 +328,11 @@ class AgentRunModelApprovalTest {
                 (server, user, targetRepository) -> mcp, List.of(new GitHubMcpToolActionAdapter()));
         String alias = "mcp_" + UUID.nameUUIDFromBytes("service-1:create_issue".getBytes(StandardCharsets.UTF_8))
                 .toString().replace("-", "");
-        String unsupportedClaims = "{\"repository\":\"KumiKo2007/hi-agent\","
-                + "\"title\":\"Zero downtime migration\","
+        String unsupportedClaims = "{\"repository\":\"KumiKo2007/hi-agent\"," + "\"title\":\"Zero downtime migration\","
                 + "\"body\":\"Token recovery is guaranteed without downtime.\"}";
-        AgentRunModel model = runModel(new ProposingChatModel(ToolExecutionRequest.builder().id("request-1")
-                .name(alias).arguments(unsupportedClaims).build()), broker);
+        AgentRunModel model = runModel(new ProposingChatModel(
+                ToolExecutionRequest.builder().id("request-1").name(alias).arguments(unsupportedClaims).build()),
+                broker);
 
         BusinessException exception = assertThrows(BusinessException.class,
                 () -> model.executeWithActions(runWithTargetRepository()));
@@ -332,11 +348,12 @@ class AgentRunModelApprovalTest {
                 (server, user, targetRepository) -> mcp, List.of(new GitHubMcpToolActionAdapter()));
         String alias = "mcp_" + UUID.nameUUIDFromBytes("service-1:create_issue".getBytes(StandardCharsets.UTF_8))
                 .toString().replace("-", "");
-        String oppositePolarity = "{\"repository\":\"KumiKo2007/hi-agent\","
-                + "\"title\":\"Gateway retry\","
+        String oppositePolarity = "{\"repository\":\"KumiKo2007/hi-agent\"," + "\"title\":\"Gateway retry\","
                 + "\"body\":\"The gateway does not retry failed requests.\"}";
-        AgentRunModel model = runModel(new ProposingChatModel(ToolExecutionRequest.builder().id("request-1")
-                .name(alias).arguments(oppositePolarity).build()), broker);
+        AgentRunModel model = runModel(
+                new ProposingChatModel(
+                        ToolExecutionRequest.builder().id("request-1").name(alias).arguments(oppositePolarity).build()),
+                broker);
 
         BusinessException exception = assertThrows(BusinessException.class,
                 () -> model.executeWithActions(runWithTargetRepository()));
@@ -352,13 +369,14 @@ class AgentRunModelApprovalTest {
                 (server, user, targetRepository) -> mcp, List.of(new GitHubMcpToolActionAdapter()));
         String alias = "mcp_" + UUID.nameUUIDFromBytes("service-1:create_issue".getBytes(StandardCharsets.UTF_8))
                 .toString().replace("-", "");
-        String oppositePolarity = "{\"repository\":\"KumiKo2007/hi-agent\","
-                + "\"title\":\"Gateway retry\","
+        String oppositePolarity = "{\"repository\":\"KumiKo2007/hi-agent\"," + "\"title\":\"Gateway retry\","
                 + "\"body\":\"The gateway does not retry failed requests.\"}";
         KnowledgeCitation source = citation();
         source.setContent("The gateway retries failed requests without delay.");
-        AgentRunModel model = runModel(new ProposingChatModel(ToolExecutionRequest.builder().id("request-1")
-                .name(alias).arguments(oppositePolarity).build()), broker,
+        AgentRunModel model = runModel(
+                new ProposingChatModel(
+                        ToolExecutionRequest.builder().id("request-1").name(alias).arguments(oppositePolarity).build()),
+                broker,
                 (version, query, user) -> new KnowledgeRetrievalResult(version, true, "evidence", List.of(source)));
 
         BusinessException exception = assertThrows(BusinessException.class,
@@ -375,13 +393,14 @@ class AgentRunModelApprovalTest {
                 (server, user, targetRepository) -> mcp, List.of(new GitHubMcpToolActionAdapter()));
         String alias = "mcp_" + UUID.nameUUIDFromBytes("service-1:create_issue".getBytes(StandardCharsets.UTF_8))
                 .toString().replace("-", "");
-        String oppositePolarity = "{\"repository\":\"KumiKo2007/hi-agent\","
-                + "\"title\":\"Gateway retry\","
+        String oppositePolarity = "{\"repository\":\"KumiKo2007/hi-agent\"," + "\"title\":\"Gateway retry\","
                 + "\"body\":\"The gateway does not retry failed requests.\"}";
         KnowledgeCitation source = citation();
         source.setContent("The gateway retries failed requests但缓存不会提前过期");
-        AgentRunModel model = runModel(new ProposingChatModel(ToolExecutionRequest.builder().id("request-1")
-                .name(alias).arguments(oppositePolarity).build()), broker,
+        AgentRunModel model = runModel(
+                new ProposingChatModel(
+                        ToolExecutionRequest.builder().id("request-1").name(alias).arguments(oppositePolarity).build()),
+                broker,
                 (version, query, user) -> new KnowledgeRetrievalResult(version, true, "evidence", List.of(source)));
 
         BusinessException exception = assertThrows(BusinessException.class,
@@ -398,12 +417,13 @@ class AgentRunModelApprovalTest {
                 (server, user, targetRepository) -> mcp, List.of(new GitHubMcpToolActionAdapter()));
         String alias = "mcp_" + UUID.nameUUIDFromBytes("service-1:create_issue".getBytes(StandardCharsets.UTF_8))
                 .toString().replace("-", "");
-        String arguments = "{\"repository\":\"KumiKo2007/hi-agent\","
-                + "\"title\":\"网关重试失败请求\",\"body\":\"网关重试失败请求\"}";
+        String arguments = "{\"repository\":\"KumiKo2007/hi-agent\"," + "\"title\":\"网关重试失败请求\",\"body\":\"网关重试失败请求\"}";
         KnowledgeCitation source = citation();
         source.setContent("不但网关重试失败请求，而且缓存可用");
-        AgentRunModel model = runModel(new ProposingChatModel(ToolExecutionRequest.builder().id("request-1")
-                .name(alias).arguments(arguments).build()), broker,
+        AgentRunModel model = runModel(
+                new ProposingChatModel(
+                        ToolExecutionRequest.builder().id("request-1").name(alias).arguments(arguments).build()),
+                broker,
                 (version, query, user) -> new KnowledgeRetrievalResult(version, true, "evidence", List.of(source)));
 
         RunExecution execution = model.executeWithActions(runWithTargetRepository());
@@ -419,13 +439,14 @@ class AgentRunModelApprovalTest {
                 (server, user, targetRepository) -> mcp, List.of(new GitHubMcpToolActionAdapter()));
         String alias = "mcp_" + UUID.nameUUIDFromBytes("service-1:create_issue".getBytes(StandardCharsets.UTF_8))
                 .toString().replace("-", "");
-        String oppositePolarity = "{\"repository\":\"KumiKo2007/hi-agent\","
-                + "\"title\":\"Gateway retry\","
+        String oppositePolarity = "{\"repository\":\"KumiKo2007/hi-agent\"," + "\"title\":\"Gateway retry\","
                 + "\"body\":\"The gateway retry is not slow.\"}";
         KnowledgeCitation source = citation();
         source.setContent("The gateway retry is slow with no monitoring.");
-        AgentRunModel model = runModel(new ProposingChatModel(ToolExecutionRequest.builder().id("request-1")
-                .name(alias).arguments(oppositePolarity).build()), broker,
+        AgentRunModel model = runModel(
+                new ProposingChatModel(
+                        ToolExecutionRequest.builder().id("request-1").name(alias).arguments(oppositePolarity).build()),
+                broker,
                 (version, query, user) -> new KnowledgeRetrievalResult(version, true, "evidence", List.of(source)));
 
         BusinessException exception = assertThrows(BusinessException.class,
@@ -446,8 +467,10 @@ class AgentRunModelApprovalTest {
                 + "\"title\":\"Gateway retries\",\"body\":\"The gateway has retries.\"}";
         KnowledgeCitation source = citation();
         source.setContent("The gateway has no retries.");
-        AgentRunModel model = runModel(new ProposingChatModel(ToolExecutionRequest.builder().id("request-1")
-                .name(alias).arguments(positiveClaim).build()), broker,
+        AgentRunModel model = runModel(
+                new ProposingChatModel(
+                        ToolExecutionRequest.builder().id("request-1").name(alias).arguments(positiveClaim).build()),
+                broker,
                 (version, query, user) -> new KnowledgeRetrievalResult(version, true, "evidence", List.of(source)));
 
         BusinessException exception = assertThrows(BusinessException.class,
@@ -464,13 +487,14 @@ class AgentRunModelApprovalTest {
                 (server, user, targetRepository) -> mcp, List.of(new GitHubMcpToolActionAdapter()));
         String alias = "mcp_" + UUID.nameUUIDFromBytes("service-1:create_issue".getBytes(StandardCharsets.UTF_8))
                 .toString().replace("-", "");
-        String positiveClaim = "{\"repository\":\"KumiKo2007/hi-agent\","
-                + "\"title\":\"Gateway retry\","
+        String positiveClaim = "{\"repository\":\"KumiKo2007/hi-agent\"," + "\"title\":\"Gateway retry\","
                 + "\"body\":\"The gateway retries failed requests.\"}";
         KnowledgeCitation source = citation();
         source.setContent("The gateway no longer retries failed requests.");
-        AgentRunModel model = runModel(new ProposingChatModel(ToolExecutionRequest.builder().id("request-1")
-                .name(alias).arguments(positiveClaim).build()), broker,
+        AgentRunModel model = runModel(
+                new ProposingChatModel(
+                        ToolExecutionRequest.builder().id("request-1").name(alias).arguments(positiveClaim).build()),
+                broker,
                 (version, query, user) -> new KnowledgeRetrievalResult(version, true, "evidence", List.of(source)));
 
         BusinessException exception = assertThrows(BusinessException.class,
@@ -487,13 +511,14 @@ class AgentRunModelApprovalTest {
                 (server, user, targetRepository) -> mcp, List.of(new GitHubMcpToolActionAdapter()));
         String alias = "mcp_" + UUID.nameUUIDFromBytes("service-1:create_issue".getBytes(StandardCharsets.UTF_8))
                 .toString().replace("-", "");
-        String positiveClaim = "{\"repository\":\"KumiKo2007/hi-agent\","
-                + "\"title\":\"Gateway retry\","
+        String positiveClaim = "{\"repository\":\"KumiKo2007/hi-agent\"," + "\"title\":\"Gateway retry\","
                 + "\"body\":\"The gateway retries failed requests.\"}";
         KnowledgeCitation source = citation();
         source.setContent("The gateway operates without retries for failed requests.");
-        AgentRunModel model = runModel(new ProposingChatModel(ToolExecutionRequest.builder().id("request-1")
-                .name(alias).arguments(positiveClaim).build()), broker,
+        AgentRunModel model = runModel(
+                new ProposingChatModel(
+                        ToolExecutionRequest.builder().id("request-1").name(alias).arguments(positiveClaim).build()),
+                broker,
                 (version, query, user) -> new KnowledgeRetrievalResult(version, true, "evidence", List.of(source)));
 
         BusinessException exception = assertThrows(BusinessException.class,
@@ -514,8 +539,10 @@ class AgentRunModelApprovalTest {
                 + "\"title\":\"网关不得不重试请求\",\"body\":\"网关不重试请求\"}";
         KnowledgeCitation source = citation();
         source.setContent("网关不得不重试请求");
-        AgentRunModel model = runModel(new ProposingChatModel(ToolExecutionRequest.builder().id("request-1")
-                .name(alias).arguments(contradictoryClaim).build()), broker,
+        AgentRunModel model = runModel(
+                new ProposingChatModel(ToolExecutionRequest.builder().id("request-1").name(alias)
+                        .arguments(contradictoryClaim).build()),
+                broker,
                 (version, query, user) -> new KnowledgeRetrievalResult(version, true, "evidence", List.of(source)));
 
         BusinessException exception = assertThrows(BusinessException.class,
@@ -536,8 +563,10 @@ class AgentRunModelApprovalTest {
                 + "\"title\":\"Gateway retry\",\"body\":\"The gateway retries failed requests.\"}";
         KnowledgeCitation source = citation();
         source.setContent("The gateway avoids retries for failed requests.");
-        AgentRunModel model = runModel(new ProposingChatModel(ToolExecutionRequest.builder().id("request-1")
-                .name(alias).arguments(positiveClaim).build()), broker,
+        AgentRunModel model = runModel(
+                new ProposingChatModel(
+                        ToolExecutionRequest.builder().id("request-1").name(alias).arguments(positiveClaim).build()),
+                broker,
                 (version, query, user) -> new KnowledgeRetrievalResult(version, true, "evidence", List.of(source)));
 
         BusinessException exception = assertThrows(BusinessException.class,
@@ -554,13 +583,14 @@ class AgentRunModelApprovalTest {
                 (server, user, targetRepository) -> mcp, List.of(new GitHubMcpToolActionAdapter()));
         String alias = "mcp_" + UUID.nameUUIDFromBytes("service-1:create_issue".getBytes(StandardCharsets.UTF_8))
                 .toString().replace("-", "");
-        String positiveClaim = "{\"repository\":\"KumiKo2007/hi-agent\","
-                + "\"title\":\"Gateway retry support\","
+        String positiveClaim = "{\"repository\":\"KumiKo2007/hi-agent\"," + "\"title\":\"Gateway retry support\","
                 + "\"body\":\"The gateway provides retry support.\"}";
         KnowledgeCitation source = citation();
         source.setContent("The gateway provides no retry support.");
-        AgentRunModel model = runModel(new ProposingChatModel(ToolExecutionRequest.builder().id("request-1")
-                .name(alias).arguments(positiveClaim).build()), broker,
+        AgentRunModel model = runModel(
+                new ProposingChatModel(
+                        ToolExecutionRequest.builder().id("request-1").name(alias).arguments(positiveClaim).build()),
+                broker,
                 (version, query, user) -> new KnowledgeRetrievalResult(version, true, "evidence", List.of(source)));
 
         BusinessException exception = assertThrows(BusinessException.class,
@@ -577,13 +607,14 @@ class AgentRunModelApprovalTest {
                 (server, user, targetRepository) -> mcp, List.of(new GitHubMcpToolActionAdapter()));
         String alias = "mcp_" + UUID.nameUUIDFromBytes("service-1:create_issue".getBytes(StandardCharsets.UTF_8))
                 .toString().replace("-", "");
-        String positiveClaim = "{\"repository\":\"KumiKo2007/hi-agent\","
-                + "\"title\":\"Gateway retry support\","
+        String positiveClaim = "{\"repository\":\"KumiKo2007/hi-agent\"," + "\"title\":\"Gateway retry support\","
                 + "\"body\":\"The gateway has retry support.\"}";
         KnowledgeCitation source = citation();
         source.setContent("The gateway lacks retry support.");
-        AgentRunModel model = runModel(new ProposingChatModel(ToolExecutionRequest.builder().id("request-1")
-                .name(alias).arguments(positiveClaim).build()), broker,
+        AgentRunModel model = runModel(
+                new ProposingChatModel(
+                        ToolExecutionRequest.builder().id("request-1").name(alias).arguments(positiveClaim).build()),
+                broker,
                 (version, query, user) -> new KnowledgeRetrievalResult(version, true, "evidence", List.of(source)));
 
         BusinessException exception = assertThrows(BusinessException.class,
@@ -602,17 +633,17 @@ class AgentRunModelApprovalTest {
     @Test
     void shouldNotPrepareApprovalWhenPositiveRetryEvidenceIsDraftedAsRefusalOrInability() {
         List<String[]> cases = List.of(
-                new String[] {"Gateways do not avoid retries for failed requests.", "Gateways",
+                new String[]{"Gateways do not avoid retries for failed requests.", "Gateways",
                         "Gateways avoid retries for failed requests."},
-                new String[] {"The gateway is not avoiding retries for failed requests.", "Gateway retry",
+                new String[]{"The gateway is not avoiding retries for failed requests.", "Gateway retry",
                         "The gateway is avoiding retries for failed requests."},
-                new String[] {"The gateway is not refusing to retry failed requests.", "Gateway retry",
+                new String[]{"The gateway is not refusing to retry failed requests.", "Gateway retry",
                         "The gateway is refusing to retry failed requests."},
-                new String[] {"The gateway is not unable to retry failed requests.", "Gateway retry",
+                new String[]{"The gateway is not unable to retry failed requests.", "Gateway retry",
                         "The gateway is unable to retry failed requests."},
-                new String[] {"The gateway is not stopping retries for failed requests.", "Gateway retry",
+                new String[]{"The gateway is not stopping retries for failed requests.", "Gateway retry",
                         "The gateway is stopping retries for failed requests."},
-                new String[] {"The gateway is not refraining from retrying failed requests", "Gateway retrying",
+                new String[]{"The gateway is not refraining from retrying failed requests", "Gateway retrying",
                         "The gateway is refraining from retrying failed requests."});
 
         for (String[] testCase : cases) {
@@ -632,19 +663,17 @@ class AgentRunModelApprovalTest {
     @Test
     void shouldNotPrepareApprovalForRetryRefusalOrUnavailableRetryCapability() {
         List<String[]> cases = List.of(
-                new String[] {"The gateway refuses to retry failed requests.",
-                        "The gateway retries failed requests."},
-                new String[] {"The gateway stops retrying failed requests.",
+                new String[]{"The gateway refuses to retry failed requests.", "The gateway retries failed requests."},
+                new String[]{"The gateway stops retrying failed requests.", "The gateway is retrying failed requests."},
+                new String[]{"The gateway refrains from retrying failed requests.",
                         "The gateway is retrying failed requests."},
-                new String[] {"The gateway refrains from retrying failed requests.",
-                        "The gateway is retrying failed requests."},
-                new String[] {"The gateway supports no retries for failed requests.",
+                new String[]{"The gateway supports no retries for failed requests.",
                         "The gateway retries failed requests."},
-                new String[] {"The gateway offers no retries for failed requests.",
+                new String[]{"The gateway offers no retries for failed requests.",
                         "The gateway retries failed requests."},
-                new String[] {"The gateway operates with no retries for failed requests.",
+                new String[]{"The gateway operates with no retries for failed requests.",
                         "The gateway retries failed requests."},
-                new String[] {"The gateway is unable to retry failed requests.",
+                new String[]{"The gateway is unable to retry failed requests.",
                         "The gateway retries failed requests."});
 
         for (String[] testCase : cases) {
@@ -671,8 +700,8 @@ class AgentRunModelApprovalTest {
 
     @Test
     void shouldNotPrepareApprovalWhenPositiveNotFailingToRetryEvidenceIsDraftedAsNegative() {
-        assertDraftRejectedWithoutMcpWrite("The gateway does not fail to retry failed requests.",
-                "Gateway retry", "The gateway does not retry failed requests.");
+        assertDraftRejectedWithoutMcpWrite("The gateway does not fail to retry failed requests.", "Gateway retry",
+                "The gateway does not retry failed requests.");
     }
 
     @Test
@@ -697,8 +726,10 @@ class AgentRunModelApprovalTest {
         source.setContent(evidence);
         ToolBroker broker = new ToolBroker(catalog(action()), (server, user) -> mcp,
                 (server, user, targetRepository) -> mcp, List.of(new GitHubMcpToolActionAdapter()));
-        AgentRunModel model = runModel(new ProposingChatModel(ToolExecutionRequest.builder().id("request-1")
-                .name(alias).arguments(arguments.toString()).build()), broker,
+        AgentRunModel model = runModel(
+                new ProposingChatModel(ToolExecutionRequest.builder().id("request-1").name(alias)
+                        .arguments(arguments.toString()).build()),
+                broker,
                 (version, query, user) -> new KnowledgeRetrievalResult(version, true, "evidence", List.of(source)));
 
         BusinessException exception = assertThrows(BusinessException.class,
@@ -721,8 +752,10 @@ class AgentRunModelApprovalTest {
                 + "\"body\":\"The cache expires after 30 days.\"}";
         KnowledgeCitation source = citation();
         source.setContent("The gateway does not retry failed requests. The cache expires after 30 days.");
-        AgentRunModel model = runModel(new ProposingChatModel(ToolExecutionRequest.builder().id("request-1")
-                .name(alias).arguments(oppositeTitle).build()), broker,
+        AgentRunModel model = runModel(
+                new ProposingChatModel(
+                        ToolExecutionRequest.builder().id("request-1").name(alias).arguments(oppositeTitle).build()),
+                broker,
                 (version, query, user) -> new KnowledgeRetrievalResult(version, true, "evidence", List.of(source)));
 
         BusinessException exception = assertThrows(BusinessException.class,
@@ -741,12 +774,13 @@ class AgentRunModelApprovalTest {
         String alias = "mcp_" + UUID.nameUUIDFromBytes("service-1:create_issue".getBytes(StandardCharsets.UTF_8))
                 .toString().replace("-", "");
         String reversedRelationship = "{\"repository\":\"KumiKo2007/hi-agent\","
-                + "\"title\":\"Gateway token rotation\","
-                + "\"body\":\"Token rotation blocks the gateway.\"}";
+                + "\"title\":\"Gateway token rotation\"," + "\"body\":\"Token rotation blocks the gateway.\"}";
         KnowledgeCitation source = citation();
         source.setContent("The gateway blocks token rotation.");
-        AgentRunModel model = runModel(new ProposingChatModel(ToolExecutionRequest.builder().id("request-1")
-                .name(alias).arguments(reversedRelationship).build()), broker,
+        AgentRunModel model = runModel(
+                new ProposingChatModel(ToolExecutionRequest.builder().id("request-1").name(alias)
+                        .arguments(reversedRelationship).build()),
+                broker,
                 (version, query, user) -> new KnowledgeRetrievalResult(version, true, "evidence", List.of(source)));
 
         BusinessException exception = assertThrows(BusinessException.class,
@@ -759,8 +793,8 @@ class AgentRunModelApprovalTest {
     @Test
     void preservesTheApprovedIntentMarkerSoReconciliationFindsAnAlreadyCreatedIssue() throws Exception {
         TestMcpClient mcp = new TestMcpClient();
-        RegisteredToolAction action = new RegisteredToolAction("service-1", "github", "create_issue",
-                "Create issue", SCHEMA, ToolActionClassification.WRITE_REQUIRES_APPROVAL);
+        RegisteredToolAction action = new RegisteredToolAction("service-1", "github", "create_issue", "Create issue",
+                SCHEMA, ToolActionClassification.WRITE_REQUIRES_APPROVAL);
         ToolBroker broker = new ToolBroker(catalog(action), (server, user) -> mcp,
                 (server, user, targetRepository) -> mcp, List.of(new GitHubMcpToolActionAdapter()));
         String alias = "mcp_" + UUID.nameUUIDFromBytes("service-1:create_issue".getBytes(StandardCharsets.UTF_8))
@@ -768,8 +802,10 @@ class AgentRunModelApprovalTest {
         RunEntity run = run();
         run.setTargetRepository("kumiko2007/hi-agent");
 
-        RunExecution execution = runModel(new ProposingChatModel(ToolExecutionRequest.builder().id("request-1")
-                .name(alias).arguments(ARGUMENTS).build()), broker).executeWithActions(run);
+        RunExecution execution = runModel(
+                new ProposingChatModel(
+                        ToolExecutionRequest.builder().id("request-1").name(alias).arguments(ARGUMENTS).build()),
+                broker).executeWithActions(run);
         RunApprovalDraft draft = execution.approvalRequest();
         RunApprovalEntity approval = RunApprovalEntity.create(run.getId(), draft);
         approval.decide(true, "owner");
@@ -788,9 +824,16 @@ class AgentRunModelApprovalTest {
             public Optional<GitHubConnection> findByOwner(String ownerId) {
                 return "owner".equals(ownerId) ? Optional.of(connection) : Optional.empty();
             }
-            @Override public Optional<GitHubConnection> findByOwnerForUpdate(String ownerId) { return findByOwner(ownerId); }
-            @Override public void save(GitHubConnection value) { }
-            @Override public void deleteByOwner(String ownerId) { }
+            @Override
+            public Optional<GitHubConnection> findByOwnerForUpdate(String ownerId) {
+                return findByOwner(ownerId);
+            }
+            @Override
+            public void save(GitHubConnection value) {
+            }
+            @Override
+            public void deleteByOwner(String ownerId) {
+            }
         };
         GitHubConnectionAppService githubConnections = new GitHubConnectionAppService(connectionRepository,
                 (credential, repositories) -> new GitHubCredentialVerifier.Identity("github-user", "github-login"),
@@ -847,8 +890,8 @@ class AgentRunModelApprovalTest {
     @Test
     void shouldNotHonorPreauthorizationForAnUnclassifiedAction() {
         TestMcpClient mcp = new TestMcpClient();
-        RegisteredToolAction unknown = new RegisteredToolAction("service-1", "test-server", "create_issue", "Create issue",
-                SCHEMA, ToolActionClassification.WRITE_REQUIRES_APPROVAL, false, true);
+        RegisteredToolAction unknown = new RegisteredToolAction("service-1", "test-server", "create_issue",
+                "Create issue", SCHEMA, ToolActionClassification.WRITE_REQUIRES_APPROVAL, false, true);
         RunExecution result = proposedWrite(unknown, mcp, run());
 
         assertTrue(result.isAwaitingApproval());
@@ -859,8 +902,10 @@ class AgentRunModelApprovalTest {
         ToolActionCatalog catalog = catalog(action);
         String alias = "mcp_" + UUID.nameUUIDFromBytes("service-1:create_issue".getBytes(StandardCharsets.UTF_8))
                 .toString().replace("-", "");
-        AgentRunModel runModel = runModel(new ProposingChatModel(ToolExecutionRequest.builder().id("request-1")
-                .name(alias).arguments(ARGUMENTS).build()), new ToolBroker(catalog, (server, user) -> mcp));
+        AgentRunModel runModel = runModel(
+                new ProposingChatModel(
+                        ToolExecutionRequest.builder().id("request-1").name(alias).arguments(ARGUMENTS).build()),
+                new ToolBroker(catalog, (server, user) -> mcp));
         return runModel.executeWithActions(run);
     }
 
@@ -893,8 +938,8 @@ class AgentRunModelApprovalTest {
     }
 
     private static AgentRunModel runModel(ChatModel chatModel, ToolBroker broker) {
-        return runModel(chatModel, broker, (version, query, user) -> new KnowledgeRetrievalResult(version, true,
-                "evidence", List.of(citation())));
+        return runModel(chatModel, broker,
+                (version, query, user) -> new KnowledgeRetrievalResult(version, true, "evidence", List.of(citation())));
     }
 
     private static AgentRunModel runModel(ChatModel chatModel, ToolBroker broker, RunKnowledgeRetriever knowledge) {
@@ -905,14 +950,17 @@ class AgentRunModelApprovalTest {
         agent.setSystemPrompt("Use registered tools when needed.");
         AgentWorkspaceEntity workspace = new AgentWorkspaceEntity("agent-1", "owner", new LLMModelConfig());
 
-        AgentRepository agents = proxy(AgentRepository.class, method -> method.getName().equals("selectByIds")
-                ? List.of(agent) : defaultValue(method.getReturnType()));
-        AgentWorkspaceRepository workspaces = proxy(AgentWorkspaceRepository.class, method ->
-                method.getName().equals("selectOne") ? workspace : defaultValue(method.getReturnType()));
+        AgentRepository agents = proxy(AgentRepository.class,
+                method -> method.getName().equals("selectByIds")
+                        ? List.of(agent)
+                        : defaultValue(method.getReturnType()));
+        AgentWorkspaceRepository workspaces = proxy(AgentWorkspaceRepository.class,
+                method -> method.getName().equals("selectOne") ? workspace : defaultValue(method.getReturnType()));
         AgentVersionRepository versions = proxy(AgentVersionRepository.class,
                 method -> defaultValue(method.getReturnType()));
         AgentDomainService agentService = new AgentDomainService(agents, versions, workspaces, null);
-        AgentWorkspaceDomainService workspaceService = new AgentWorkspaceDomainService(workspaces, agentService, agents);
+        AgentWorkspaceDomainService workspaceService = new AgentWorkspaceDomainService(workspaces, agentService,
+                agents);
 
         ModelEntity model = new ModelEntity();
         model.setId("model-1");
@@ -923,11 +971,12 @@ class AgentRunModelApprovalTest {
         provider.setStatus(true);
         provider.setIsOfficial(true);
         provider.setProtocol(ProviderProtocol.OPENAI);
-        ModelRepository models = proxy(ModelRepository.class, method ->
-                method.getName().equals("selectById") ? model : defaultValue(method.getReturnType()));
-        ProviderRepository providers = proxy(ProviderRepository.class, method ->
-                method.getName().equals("selectOne") ? provider : defaultValue(method.getReturnType()));
-        LLMDomainService llmService = new LLMDomainService(providers, models, event -> { });
+        ModelRepository models = proxy(ModelRepository.class,
+                method -> method.getName().equals("selectById") ? model : defaultValue(method.getReturnType()));
+        ProviderRepository providers = proxy(ProviderRepository.class,
+                method -> method.getName().equals("selectOne") ? provider : defaultValue(method.getReturnType()));
+        LLMDomainService llmService = new LLMDomainService(providers, models, event -> {
+        });
         LLMServiceFactory modelFactory = new LLMServiceFactory() {
             @Override
             public ChatModel getStrandClient(ProviderEntity ignoredProvider, ModelEntity ignoredModel) {
@@ -951,15 +1000,19 @@ class AgentRunModelApprovalTest {
     }
 
     private static <T> T proxy(Class<T> type, Function<java.lang.reflect.Method, Object> handler) {
-        return type.cast(java.lang.reflect.Proxy.newProxyInstance(type.getClassLoader(), new Class<?>[] { type },
+        return type.cast(java.lang.reflect.Proxy.newProxyInstance(type.getClassLoader(), new Class<?>[]{type},
                 (ignored, method, args) -> handler.apply(method)));
     }
 
     private static Object defaultValue(Class<?> type) {
-        if (!type.isPrimitive()) return null;
-        if (type == boolean.class) return false;
-        if (type == int.class) return 0;
-        if (type == long.class) return 0L;
+        if (!type.isPrimitive())
+            return null;
+        if (type == boolean.class)
+            return false;
+        if (type == int.class)
+            return 0;
+        if (type == long.class)
+            return 0L;
         return null;
     }
 
@@ -983,8 +1036,8 @@ class AgentRunModelApprovalTest {
         private final String result;
 
         private TestMcpClient() {
-            this(ToolSpecification.builder().name("create_issue").description("Create issue")
-                    .parameters(MCP_SCHEMA).build(), "created");
+            this(ToolSpecification.builder().name("create_issue").description("Create issue").parameters(MCP_SCHEMA)
+                    .build(), "created");
         }
 
         private TestMcpClient(ToolSpecification tool, String result) {
@@ -992,23 +1045,49 @@ class AgentRunModelApprovalTest {
             this.result = result;
         }
 
-        @Override public String key() { return "github"; }
-        @Override public List<ToolSpecification> listTools() {
+        @Override
+        public String key() {
+            return "github";
+        }
+        @Override
+        public List<ToolSpecification> listTools() {
             return List.of(tool);
         }
-        @Override public String executeTool(ToolExecutionRequest request) {
+        @Override
+        public String executeTool(ToolExecutionRequest request) {
             writeCalls.incrementAndGet();
             return result;
         }
-        @Override public List<McpResource> listResources() { throw new UnsupportedOperationException(); }
-        @Override public List<McpResourceTemplate> listResourceTemplates() { throw new UnsupportedOperationException(); }
-        @Override public McpReadResourceResult readResource(String uri) { throw new UnsupportedOperationException(); }
-        @Override public List<McpPrompt> listPrompts() { throw new UnsupportedOperationException(); }
-        @Override public McpGetPromptResult getPrompt(String name, Map<String, Object> arguments) {
+        @Override
+        public List<McpResource> listResources() {
             throw new UnsupportedOperationException();
         }
-        @Override public void checkHealth() { throw new UnsupportedOperationException(); }
-        @Override public void presetParameters(List<PresetParameter> parameters) { throw new UnsupportedOperationException(); }
-        @Override public void close() { }
+        @Override
+        public List<McpResourceTemplate> listResourceTemplates() {
+            throw new UnsupportedOperationException();
+        }
+        @Override
+        public McpReadResourceResult readResource(String uri) {
+            throw new UnsupportedOperationException();
+        }
+        @Override
+        public List<McpPrompt> listPrompts() {
+            throw new UnsupportedOperationException();
+        }
+        @Override
+        public McpGetPromptResult getPrompt(String name, Map<String, Object> arguments) {
+            throw new UnsupportedOperationException();
+        }
+        @Override
+        public void checkHealth() {
+            throw new UnsupportedOperationException();
+        }
+        @Override
+        public void presetParameters(List<PresetParameter> parameters) {
+            throw new UnsupportedOperationException();
+        }
+        @Override
+        public void close() {
+        }
     }
 }

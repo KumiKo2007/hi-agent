@@ -77,8 +77,8 @@ public class RunTimelineEventEntity extends BaseEntity {
             case MODEL_CALL -> "FAILED".equals(status) ? "模型调用失败" : "模型调用完成";
             case TOOL_ACTION -> toolSummary(status);
             case APPROVAL_REQUESTED -> "外部写入等待所有者审批";
-            case APPROVAL_DECISION -> "APPROVED".equals(status) || "PREAUTHORIZED".equals(status)
-                    ? "所有者已批准外部写入" : "所有者已拒绝外部写入";
+            case APPROVAL_DECISION ->
+                "APPROVED".equals(status) || "PREAUTHORIZED".equals(status) ? "所有者已批准外部写入" : "所有者已拒绝外部写入";
             case RECONCILIATION -> reconciliationSummary(status);
             case TOOL_SCHEMA_REVIEW -> "工具结构发生变化，运行已暂停";
             case RUN_COMPLETED -> "运行已完成";

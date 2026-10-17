@@ -15,10 +15,8 @@ public final class RunEvidenceCitationAppender {
     private RunEvidenceCitationAppender() {
     }
 
-    /**
-     * Appends citations from the run's pinned evidence to a textual MCP {@code body} parameter.
-     * The modified arguments must be persisted and shown before the owner approves them.
-     */
+    /** Appends citations from the run's pinned evidence to a textual MCP {@code body} parameter. The modified arguments
+     * must be persisted and shown before the owner approves them. */
     public static String appendToBody(String arguments, List<KnowledgeCitation> citations) {
         if (citations == null || citations.isEmpty()) {
             throw new BusinessException("资料依据不足，已停止外部写入");
@@ -38,8 +36,7 @@ public final class RunEvidenceCitationAppender {
                 KnowledgeCitation citation = citations.get(index);
                 String fileName = safeLabel(citation.getFileName());
                 String page = citation.getPage() == null ? "page not specified" : "page " + citation.getPage();
-                appendix.append("\n- [S").append(index + 1).append("] `").append(fileName).append("`, ")
-                        .append(page);
+                appendix.append("\n- [S").append(index + 1).append("] `").append(fileName).append("`, ").append(page);
             }
             String currentBody = bodyValue.asText().stripTrailing();
             bodyArguments.put("body", currentBody + "\n\n---\n\n" + appendix);

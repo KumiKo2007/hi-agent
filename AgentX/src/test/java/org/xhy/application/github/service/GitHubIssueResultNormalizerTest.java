@@ -33,9 +33,8 @@ class GitHubIssueResultNormalizerTest {
 
     @Test
     void createsCanonicalUrlFromStructuredIssueNumberOrPlainTextNumber() {
-        assertEquals("https://github.com/octo/project/issues/11",
-                normalizer.normalize("github", "create_issue", "octo/project",
-                        "{\"structuredContent\":{\"number\":11}}"));
+        assertEquals("https://github.com/octo/project/issues/11", normalizer.normalize("github", "create_issue",
+                "octo/project", "{\"structuredContent\":{\"number\":11}}"));
         assertEquals("https://github.com/octo/project/issues/12",
                 normalizer.normalize("github", "create_issue", "octo/project", "Created issue #12"));
     }

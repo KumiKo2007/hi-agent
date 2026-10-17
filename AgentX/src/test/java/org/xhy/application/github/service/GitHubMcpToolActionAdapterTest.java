@@ -16,10 +16,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class GitHubMcpToolActionAdapterTest {
     private static final ObjectMapper JSON = new ObjectMapper();
-    private static final Map<String, Object> SCHEMA = Map.of("type", "object", "properties", Map.of(
-            "repository", Map.of("type", "string"), "title", Map.of("type", "string"),
-            "body", Map.of("type", "string")), "required", List.of("repository", "title"),
-            "additionalProperties", false);
+    private static final Map<String, Object> SCHEMA = Map.of("type", "object", "properties",
+            Map.of("repository", Map.of("type", "string"), "title", Map.of("type", "string"), "body",
+                    Map.of("type", "string")),
+            "required", List.of("repository", "title"), "additionalProperties", false);
 
     @Test
     void hidesGitHubToolsUntilTheRunSelectsAnAuthorizedRepository() {

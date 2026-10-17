@@ -11,8 +11,8 @@ import java.util.regex.Pattern;
 /** Factories for safe timeline events; event summaries and payloads are always allowlisted. */
 public final class RunTimelineEvents {
     private static final Pattern SAFE_IDENTIFIER = Pattern.compile("[A-Za-z0-9][A-Za-z0-9._:#/-]{0,199}");
-    private static final Pattern GITHUB_ISSUE = Pattern.compile(
-            "https://github\\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+/issues/[1-9][0-9]*");
+    private static final Pattern GITHUB_ISSUE = Pattern
+            .compile("https://github\\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+/issues/[1-9][0-9]*");
 
     private RunTimelineEvents() {
     }
@@ -22,8 +22,7 @@ public final class RunTimelineEvents {
     }
 
     public static RunTimelineEventEntity attemptStarted(String runId, String stepId) {
-        return event(runId, stepId, RunTimelineEventType.RUN_ATTEMPT_STARTED, "RUNNING",
-                RunTimelineEventData.empty());
+        return event(runId, stepId, RunTimelineEventType.RUN_ATTEMPT_STARTED, "RUNNING", RunTimelineEventData.empty());
     }
 
     public static RunTimelineEventEntity runCompleted(String runId, String stepId) {
@@ -41,27 +40,27 @@ public final class RunTimelineEvents {
 
     public static RunTimelineEventEntity knowledgeRetrieval(String runId, String stepId, String versionId,
             boolean sufficient) {
-        return event(runId, stepId, RunTimelineEventType.KNOWLEDGE_RETRIEVAL,
-                sufficient ? "COMPLETED" : "INSUFFICIENT", RunTimelineEventData.retrieval(safeIdentifier(versionId)));
+        return event(runId, stepId, RunTimelineEventType.KNOWLEDGE_RETRIEVAL, sufficient ? "COMPLETED" : "INSUFFICIENT",
+                RunTimelineEventData.retrieval(safeIdentifier(versionId)));
     }
 
     public static RunTimelineEventEntity knowledgeRetrievalFailed(String runId, String stepId, String versionId,
             RunFailureCode failureCode) {
         return event(runId, stepId, RunTimelineEventType.KNOWLEDGE_RETRIEVAL, "FAILED",
-                new RunTimelineEventData(failureCode.name(), null, null, null, null, null,
-                        safeIdentifier(versionId), null, null, null, null, null, null, null, null,
-                        null, null, null));
+                new RunTimelineEventData(failureCode.name(), null, null, null, null, null, safeIdentifier(versionId),
+                        null, null, null, null, null, null, null, null, null, null, null));
     }
 
     public static RunTimelineEventEntity knowledgeSource(String runId, String stepId, KnowledgeCitation citation) {
         return event(runId, stepId, RunTimelineEventType.KNOWLEDGE_SOURCE, "USED",
                 RunTimelineEventData.source(safeIdentifier(citation.getKnowledgeVersionId()),
                         safeIdentifier(citation.getDocumentId()), safeIdentifier(citation.getFileId()),
-                        safeLabel(citation.getFileName(), 255), citation.getPage(), safeSourceUrl(citation.getSourceUrl())));
+                        safeLabel(citation.getFileName(), 255), citation.getPage(),
+                        safeSourceUrl(citation.getSourceUrl())));
     }
 
-    public static RunTimelineEventEntity modelCall(String runId, String stepId, String modelName,
-            Integer inputTokens, Integer outputTokens, boolean usageAvailable, long durationMs, boolean success) {
+    public static RunTimelineEventEntity modelCall(String runId, String stepId, String modelName, Integer inputTokens,
+            Integer outputTokens, boolean usageAvailable, long durationMs, boolean success) {
         Integer safeInput = nonNegative(inputTokens);
         Integer safeOutput = nonNegative(outputTokens);
         boolean completeUsage = usageAvailable && safeInput != null && safeOutput != null;
@@ -80,8 +79,9 @@ public final class RunTimelineEvents {
 
     public static RunTimelineEventEntity approvalRequested(String runId, String stepId, RunApprovalEntity approval) {
         return event(runId, stepId, RunTimelineEventType.APPROVAL_REQUESTED, "PENDING",
-                RunTimelineEventData.action(safeIdentifier(approval.getServiceId()), safeLabel(approval.getActionName(), 255),
-                        safeLabel(approval.getTargetRepository(), 200), null, null));
+                RunTimelineEventData.action(safeIdentifier(approval.getServiceId()),
+                        safeLabel(approval.getActionName(), 255), safeLabel(approval.getTargetRepository(), 200), null,
+                        null));
     }
 
     public static RunTimelineEventEntity approvalDecision(String runId, String stepId, RunApprovalEntity approval) {
@@ -121,8 +121,8 @@ public final class RunTimelineEvents {
         return runFailed(runId, stepId, code);
     }
 
-    private static RunTimelineEventEntity event(String runId, String stepId, RunTimelineEventType type,
-            String status, RunTimelineEventData data) {
+    private static RunTimelineEventEntity event(String runId, String stepId, RunTimelineEventType type, String status,
+            RunTimelineEventData data) {
         return RunTimelineEventEntity.create(runId, stepId, type, status, data);
     }
 

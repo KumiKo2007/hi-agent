@@ -80,8 +80,8 @@ public class RunWorker {
                         return;
                     }
                     approvedActionStarted = true;
-                    append(RunTimelineEvents.toolAction(runId, stepId, approval.getServiceId(), approval.getActionName(),
-                            approval.getTargetRepository(), "EXECUTING", null, null));
+                    append(RunTimelineEvents.toolAction(runId, stepId, approval.getServiceId(),
+                            approval.getActionName(), approval.getTargetRepository(), "EXECUTING", null, null));
                     answer = approvedActions.execute(run, approval);
                     if (answer == null || answer.isBlank()) {
                         store.waitForReconciliation(runId, token);
@@ -98,8 +98,8 @@ public class RunWorker {
                                 null, null));
                         return;
                     }
-                    append(RunTimelineEvents.toolAction(runId, stepId, approval.getServiceId(), approval.getActionName(),
-                            approval.getTargetRepository(), "COMPLETED", answer, null));
+                    append(RunTimelineEvents.toolAction(runId, stepId, approval.getServiceId(),
+                            approval.getActionName(), approval.getTargetRepository(), "COMPLETED", answer, null));
                 } else if (approval != null && "EXECUTED".equals(approval.getStatus())) {
                     if (approval.getExternalResourceId() == null || approval.getExternalResourceId().isBlank()) {
                         store.waitForReconciliation(runId, token);
@@ -115,7 +115,8 @@ public class RunWorker {
                     if (result.outcome() == ApprovedActionReconciliation.Outcome.VERIFIED_CREATED) {
                         if (result.externalResourceId() == null || result.externalResourceId().isBlank()
                                 || !store.recordReconciledCreated(runId, token, approval.getId(),
-                                        result.externalResourceId(), RunTimelineSanitizer.redactText(result.evidence()))) {
+                                        result.externalResourceId(),
+                                        RunTimelineSanitizer.redactText(result.evidence()))) {
                             store.markReconciliationUnknown(runId, token, approval.getId(), "找到外部标记，但未能安全保存资源结果");
                             return;
                         }
@@ -139,8 +140,7 @@ public class RunWorker {
                         return;
                     }
                 } else if (approval == null) {
-                    RunExecution execution = model.executeWithActions(run,
-                            event -> append(event.attachStep(stepId)));
+                    RunExecution execution = model.executeWithActions(run, event -> append(event.attachStep(stepId)));
                     if (execution.approvalRequest() != null) {
                         if (execution.preauthorized()) {
                             RunApprovalEntity request = RunApprovalEntity.createPreauthorized(runId,

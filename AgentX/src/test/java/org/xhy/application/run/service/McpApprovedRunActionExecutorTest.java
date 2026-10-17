@@ -241,7 +241,8 @@ class McpApprovedRunActionExecutorTest {
                     return client;
                 }
             };
-            GitHubConnectionAppService githubConnections = new GitHubConnectionAppService(connections, verifier, cipher);
+            GitHubConnectionAppService githubConnections = new GitHubConnectionAppService(connections, verifier,
+                    cipher);
             ToolBroker tools = new ToolBroker(catalog, clients,
                     new GitHubMcpActionClientProvider(clients, githubConnections),
                     List.of(new GitHubMcpToolActionAdapter()));

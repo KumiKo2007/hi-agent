@@ -62,20 +62,30 @@ class GitHubConnectionApprovalAuthorizationTest {
             private GitHubConnection connection = new GitHubConnection(OWNER, "github-user-1", "owner",
                     cipher.encrypt(OWNER, TOKEN), List.of("kumiko2007/hi-agent"));
 
-            @Override public Optional<GitHubConnection> findByOwner(String ownerId) {
+            @Override
+            public Optional<GitHubConnection> findByOwner(String ownerId) {
                 return OWNER.equals(ownerId) ? Optional.of(connection) : Optional.empty();
             }
-            @Override public Optional<GitHubConnection> findByOwnerForUpdate(String ownerId) {
+            @Override
+            public Optional<GitHubConnection> findByOwnerForUpdate(String ownerId) {
                 return findByOwner(ownerId);
             }
-            @Override public void save(GitHubConnection value) { connection = value; }
-            @Override public void deleteByOwner(String ownerId) { connection = null; }
+            @Override
+            public void save(GitHubConnection value) {
+                connection = value;
+            }
+            @Override
+            public void deleteByOwner(String ownerId) {
+                connection = null;
+            }
         };
         private final GitHubCredentialVerifier verifier = (token, repositories) -> {
             verifications.incrementAndGet();
-            if (!TOKEN.equals(token)) throw new AssertionError("Expected the saved GitHub token");
+            if (!TOKEN.equals(token))
+                throw new AssertionError("Expected the saved GitHub token");
             verifiedRepositories.set(List.copyOf(repositories));
-            if (revoked.get()) throw new BusinessException("credential was revoked");
+            if (revoked.get())
+                throw new BusinessException("credential was revoked");
             return new GitHubCredentialVerifier.Identity("github-user-1", "owner");
         };
         private final GitHubConnectionAppService service = new GitHubConnectionAppService(repository, verifier, cipher);

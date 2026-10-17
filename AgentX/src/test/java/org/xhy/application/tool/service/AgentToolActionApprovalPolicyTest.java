@@ -26,8 +26,8 @@ class AgentToolActionApprovalPolicyTest {
     void shouldAllowCreatorToPreauthorizeOnlySelectedExplicitWriteActions() {
         Fixture fixture = new Fixture(ToolActionClassification.WRITE_REQUIRES_APPROVAL);
 
-        assertEquals(List.of("create_issue"), fixture.service.replacePreauthorized(
-                "agent-1", "service-1", List.of("create_issue"), "creator-1"));
+        assertEquals(List.of("create_issue"),
+                fixture.service.replacePreauthorized("agent-1", "service-1", List.of("create_issue"), "creator-1"));
         assertEquals(List.of("create_issue"), fixture.selections.saved);
     }
 
@@ -35,8 +35,8 @@ class AgentToolActionApprovalPolicyTest {
     void shouldRejectPreauthorizationForUnclassifiedActions() {
         Fixture fixture = new Fixture(null);
 
-        assertThrows(BusinessException.class, () -> fixture.service.replacePreauthorized(
-                "agent-1", "service-1", List.of("create_issue"), "creator-1"));
+        assertThrows(BusinessException.class, () -> fixture.service.replacePreauthorized("agent-1", "service-1",
+                List.of("create_issue"), "creator-1"));
         assertEquals(List.of(), fixture.selections.saved);
     }
 
@@ -44,8 +44,8 @@ class AgentToolActionApprovalPolicyTest {
     void shouldRejectPreauthorizationForReadOnlyActionsAndAllowCreatorToRevokeIt() {
         Fixture fixture = new Fixture(ToolActionClassification.READ_ONLY);
 
-        assertThrows(BusinessException.class, () -> fixture.service.replacePreauthorized(
-                "agent-1", "service-1", List.of("create_issue"), "creator-1"));
+        assertThrows(BusinessException.class, () -> fixture.service.replacePreauthorized("agent-1", "service-1",
+                List.of("create_issue"), "creator-1"));
 
         Fixture writable = new Fixture(ToolActionClassification.WRITE_REQUIRES_APPROVAL);
         assertEquals(List.of(), writable.service.replacePreauthorized("agent-1", "service-1", List.of(), "creator-1"));
@@ -69,8 +69,14 @@ class AgentToolActionApprovalPolicyTest {
             }
         };
         ToolActionPolicyStore policies = new ToolActionPolicyStore() {
-            @Override public ToolActionPolicy find(String serviceId, String actionName) { return null; }
-            @Override public void save(ToolActionPolicy policy) { throw new UnsupportedOperationException(); }
+            @Override
+            public ToolActionPolicy find(String serviceId, String actionName) {
+                return null;
+            }
+            @Override
+            public void save(ToolActionPolicy policy) {
+                throw new UnsupportedOperationException();
+            }
         };
         TestSelectionStore selections = new TestSelectionStore();
         selections.selected = List.of("create_issue");
@@ -116,7 +122,8 @@ class AgentToolActionApprovalPolicyTest {
             ToolActionPolicyStore policies = new ToolActionPolicyStore() {
                 @Override
                 public ToolActionPolicy find(String serviceId, String actionName) {
-                    return classification == null ? null
+                    return classification == null
+                            ? null
                             : new ToolActionPolicy(serviceId, actionName, classification, SCHEMA);
                 }
 
@@ -127,7 +134,8 @@ class AgentToolActionApprovalPolicyTest {
             };
             selections.selected = List.of("create_issue");
             selections.saved = classification == ToolActionClassification.WRITE_REQUIRES_APPROVAL
-                    ? List.of("create_issue") : List.of();
+                    ? List.of("create_issue")
+                    : List.of();
             service = new AgentToolActionAppService(agents, installedTools, selections, policies);
         }
     }
@@ -136,21 +144,32 @@ class AgentToolActionApprovalPolicyTest {
         private List<String> selected = new ArrayList<>();
         private List<String> saved = new ArrayList<>();
 
-        @Override public List<String> list(String agentId, String serviceId) { return selected; }
-        @Override public boolean contains(String agentId, String serviceId, String actionName) {
+        @Override
+        public List<String> list(String agentId, String serviceId) {
+            return selected;
+        }
+        @Override
+        public boolean contains(String agentId, String serviceId, String actionName) {
             return selected.contains(actionName);
         }
-        @Override public void replace(String agentId, String serviceId, List<String> actionNames) {
+        @Override
+        public void replace(String agentId, String serviceId, List<String> actionNames) {
             selected = new ArrayList<>(actionNames);
         }
-        @Override public List<String> preauthorized(String agentId, String serviceId) { return saved; }
-        @Override public boolean isPreauthorized(String agentId, String serviceId, String actionName) {
+        @Override
+        public List<String> preauthorized(String agentId, String serviceId) {
+            return saved;
+        }
+        @Override
+        public boolean isPreauthorized(String agentId, String serviceId, String actionName) {
             return saved.contains(actionName);
         }
-        @Override public void replacePreauthorized(String agentId, String serviceId, List<String> actionNames) {
+        @Override
+        public void replacePreauthorized(String agentId, String serviceId, List<String> actionNames) {
             saved = new ArrayList<>(actionNames);
         }
-        @Override public void revokePreauthorization(String serviceId, String actionName) {
+        @Override
+        public void revokePreauthorization(String serviceId, String actionName) {
             saved.remove(actionName);
         }
     }

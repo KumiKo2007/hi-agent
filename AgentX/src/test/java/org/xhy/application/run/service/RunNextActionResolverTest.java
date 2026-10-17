@@ -9,8 +9,7 @@ class RunNextActionResolverTest {
     @Test
     void mapsWaitingStatesAndTerminalFailuresToConcreteOwnerActions() {
         assertEquals(RunNextAction.OWNER_DECISION, RunNextActionResolver.resolve("WAITING_APPROVAL", null));
-        assertEquals(RunNextAction.REVIEW_TOOL_SCHEMA,
-                RunNextActionResolver.resolve("WAITING_SCHEMA_REVIEW", null));
+        assertEquals(RunNextAction.REVIEW_TOOL_SCHEMA, RunNextActionResolver.resolve("WAITING_SCHEMA_REVIEW", null));
         assertEquals(RunNextAction.RECONCILE_EXTERNAL_WRITE,
                 RunNextActionResolver.resolve("WAITING_RECONCILIATION", null));
         assertEquals(RunNextAction.ADD_OR_SELECT_EVIDENCE,

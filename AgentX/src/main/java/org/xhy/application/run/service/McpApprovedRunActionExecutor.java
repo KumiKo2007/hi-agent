@@ -19,9 +19,8 @@ public class McpApprovedRunActionExecutor implements ApprovedRunActionExecutor {
     private final ToolBroker tools;
     private final ApprovedActionResultNormalizer resultNormalizer;
 
-    public McpApprovedRunActionExecutor(AgentDomainService agents,
-            RunTargetRepositoryAuthorization targetRepositories, ToolBroker tools,
-            ApprovedActionResultNormalizer resultNormalizer) {
+    public McpApprovedRunActionExecutor(AgentDomainService agents, RunTargetRepositoryAuthorization targetRepositories,
+            ToolBroker tools, ApprovedActionResultNormalizer resultNormalizer) {
         this.agents = agents;
         this.targetRepositories = targetRepositories;
         this.tools = tools;
@@ -59,12 +58,11 @@ public class McpApprovedRunActionExecutor implements ApprovedRunActionExecutor {
         if (approval.getTargetRepository() != null && !approval.getTargetRepository().isBlank()) {
             targetRepositories.revalidate(run.getUserId(), approval.getTargetRepository());
         }
-        McpActionResult result = tools.executeApprovedWrite(runAgent, run.getUserId(), approval,
-                () -> {
-                    if (approval.getTargetRepository() != null && !approval.getTargetRepository().isBlank()) {
-                        targetRepositories.revalidate(run.getUserId(), approval.getTargetRepository());
-                    }
-                });
+        McpActionResult result = tools.executeApprovedWrite(runAgent, run.getUserId(), approval, () -> {
+            if (approval.getTargetRepository() != null && !approval.getTargetRepository().isBlank()) {
+                targetRepositories.revalidate(run.getUserId(), approval.getTargetRepository());
+            }
+        });
         return resultNormalizer.normalize(result.serverName(), result.actionName(), result.targetRepository(),
                 result.resultPayload());
     }

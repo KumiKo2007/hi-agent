@@ -425,8 +425,7 @@ class RunApprovalHttpTest {
         SessionDomainService sessions = new SessionDomainService(repository);
         RunWorker worker = new RunWorker(store, model, mcp::execute);
         RunAppService service = new RunAppService(sessions, store, worker::process, null, null, null,
-                RunKnowledgeVersionResolver.none(), null,
-                new GitHubApprovedActionReferenceValidator());
+                RunKnowledgeVersionResolver.none(), null, new GitHubApprovedActionReferenceValidator());
         return MockMvcBuilders.standaloneSetup(new PortalAgentRunController(service))
                 .setControllerAdvice(new GlobalExceptionHandler()).build();
     }

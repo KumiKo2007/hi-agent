@@ -127,12 +127,28 @@ public class RunDTO {
     public void setSteps(List<RunStepDTO> steps) {
         this.steps = steps;
     }
-    public RunApprovalDTO getApproval() { return approval; }
-    public void setApproval(RunApprovalDTO approval) { this.approval = approval; }
-    public List<RunTimelineEventDTO> getTimeline() { return timeline; }
-    public void setTimeline(List<RunTimelineEventDTO> timeline) { this.timeline = timeline; }
-    public RunModelUsageDTO getModelUsage() { return modelUsage; }
-    public void setModelUsage(RunModelUsageDTO modelUsage) { this.modelUsage = modelUsage; }
-    public String getNextAction() { return nextAction; }
-    public void setNextAction(String nextAction) { this.nextAction = nextAction; }
+    public RunApprovalDTO getApproval() {
+        return approval;
+    }
+    public void setApproval(RunApprovalDTO approval) {
+        this.approval = approval;
+    }
+    public List<RunTimelineEventDTO> getTimeline() {
+        return timeline;
+    }
+    public void setTimeline(List<RunTimelineEventDTO> timeline) {
+        this.timeline = timeline;
+    }
+    public RunModelUsageDTO getModelUsage() {
+        return modelUsage;
+    }
+    public void setModelUsage(RunModelUsageDTO modelUsage) {
+        this.modelUsage = modelUsage;
+    }
+    public String getNextAction() {
+        return nextAction;
+    }
+    public void setNextAction(String nextAction) {
+        this.nextAction = nextAction;
+    }
 }

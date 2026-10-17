@@ -48,8 +48,8 @@ public final class RunAssembler {
         if (approval != null) {
             dto.setApproval(toDTO(approval));
         }
-        List<RunTimelineEventDTO> timeline = events.stream().filter(RunAssembler::isKnownEvent)
-                .map(RunAssembler::toDTO).toList();
+        List<RunTimelineEventDTO> timeline = events.stream().filter(RunAssembler::isKnownEvent).map(RunAssembler::toDTO)
+                .toList();
         dto.setTimeline(timeline);
         dto.setModelUsage(usage(timeline));
         dto.setNextAction(RunNextActionResolver.resolve(run.getStatus(), latestFailureCode(timeline)).name());
@@ -93,40 +93,30 @@ public final class RunAssembler {
             if (details == null) {
                 return RunTimelineEventData.empty();
             }
-            String usageStatus = "AVAILABLE".equals(details.usageStatus()) ? "AVAILABLE"
+            String usageStatus = "AVAILABLE".equals(details.usageStatus())
+                    ? "AVAILABLE"
                     : "UNAVAILABLE".equals(details.usageStatus()) ? "UNAVAILABLE" : null;
-            return new RunTimelineEventData(
-                    safeFailureCode(details.failureCode()),
-                    safe(details.modelName()),
-                    nonNegative(details.inputTokens()),
-                    nonNegative(details.outputTokens()),
-                    usageStatus,
-                    nonNegative(details.durationMs()),
-                    safe(details.knowledgeVersionId()),
-                    safe(details.sourceDocumentId()),
-                    safe(details.sourceFileId()),
-                    safe(details.sourceName()),
-                    nonNegative(details.sourcePage()),
-                    safeSourceUrl(details.sourceUrl()),
-                    safe(details.serviceId()),
-                    safe(details.actionName()),
-                    safe(details.targetRepository()),
-                    safe(details.actorId()),
-                    safeDecision(details.decision()),
-                    safeExternalReference(details.resultReference()));
+            return new RunTimelineEventData(safeFailureCode(details.failureCode()), safe(details.modelName()),
+                    nonNegative(details.inputTokens()), nonNegative(details.outputTokens()), usageStatus,
+                    nonNegative(details.durationMs()), safe(details.knowledgeVersionId()),
+                    safe(details.sourceDocumentId()), safe(details.sourceFileId()), safe(details.sourceName()),
+                    nonNegative(details.sourcePage()), safeSourceUrl(details.sourceUrl()), safe(details.serviceId()),
+                    safe(details.actionName()), safe(details.targetRepository()), safe(details.actorId()),
+                    safeDecision(details.decision()), safeExternalReference(details.resultReference()));
         } catch (Exception ignored) {
             return RunTimelineEventData.empty();
         }
     }
 
     private static String latestFailureCode(List<RunTimelineEventDTO> events) {
-        return events.stream().filter(event -> "RUN_FAILED".equals(event.eventType()))
-                .map(RunTimelineEventDTO::details).map(RunTimelineEventData::failureCode)
-                .filter(code -> code != null && !code.isBlank()).reduce((previous, latest) -> latest).orElse(null);
+        return events.stream().filter(event -> "RUN_FAILED".equals(event.eventType())).map(RunTimelineEventDTO::details)
+                .map(RunTimelineEventData::failureCode).filter(code -> code != null && !code.isBlank())
+                .reduce((previous, latest) -> latest).orElse(null);
     }
 
     private static RunModelUsageDTO usage(List<RunTimelineEventDTO> events) {
-        List<RunTimelineEventDTO> calls = events.stream().filter(event -> "MODEL_CALL".equals(event.eventType())).toList();
+        List<RunTimelineEventDTO> calls = events.stream().filter(event -> "MODEL_CALL".equals(event.eventType()))
+                .toList();
         long input = 0;
         long output = 0;
         boolean complete = true;

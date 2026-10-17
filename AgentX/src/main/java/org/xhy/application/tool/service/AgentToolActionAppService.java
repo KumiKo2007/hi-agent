@@ -65,8 +65,8 @@ public class AgentToolActionAppService {
             throw new BusinessException("包含重复或无效的预授权动作");
         }
         for (String actionName : requested) {
-            boolean enabled = installed.getToolList() != null && installed.getToolList().stream()
-                    .anyMatch(definition -> actionName.equals(definition.getName())
+            boolean enabled = installed.getToolList() != null
+                    && installed.getToolList().stream().anyMatch(definition -> actionName.equals(definition.getName())
                             && !Boolean.FALSE.equals(definition.getEnabled()));
             if (!enabled || !selections.contains(agentId, serviceId, actionName)) {
                 throw new BusinessException("只能预授权 Agent 已启用的 MCP 动作");

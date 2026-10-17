@@ -17,19 +17,17 @@ public final class RunTimelineSanitizer {
     private static final ObjectMapper JSON = new ObjectMapper();
     private static final String REDACTED = "[REDACTED]";
     private static final String HIDDEN_INVALID_ARGUMENTS = "Sensitive action details hidden (invalid JSON).";
-    private static final Pattern BEARER_CREDENTIAL = Pattern
-            .compile("(?i)\\b(Bearer|Basic)\\s+[A-Za-z0-9._~+/=-]{8,}");
-    private static final Pattern NAMED_CREDENTIAL = Pattern.compile(
-            "(?i)(authorization\\s*[:=]\\s*(?:(?:Bearer|Basic)\\s+)?|"
+    private static final Pattern BEARER_CREDENTIAL = Pattern.compile("(?i)\\b(Bearer|Basic)\\s+[A-Za-z0-9._~+/=-]{8,}");
+    private static final Pattern NAMED_CREDENTIAL = Pattern
+            .compile("(?i)(authorization\\s*[:=]\\s*(?:(?:Bearer|Basic)\\s+)?|"
                     + "(?:api[_-]?key|access[_-]?token|refresh[_-]?token|client[_-]?secret|"
-                    + "password|passwd|credential|secret|private[_-]?key)\\s*[:=]\\s*)"
-                    + "([^\\s,;\\\"'<>]+)");
-    private static final Pattern HEADER_BLOCK = Pattern.compile(
-            "(?i)(?<![\\\"'])((?:headers?|cookies?)\\s*[:=]\\s*)(?:\\{[^\\r\\n]*|[^\\r\\n]+)");
-    private static final Pattern COOKIE_HEADER = Pattern.compile(
-            "(?im)(?<![\\\"'])(\\b(?:cookie|set-cookie)\\s*:\\s*)[^\\r\\n]+");
-    private static final Pattern KNOWN_TOKEN = Pattern.compile(
-            "(?i)\\b(?:gh[pousr]_[A-Za-z0-9_]{16,}|github_pat_[A-Za-z0-9_]{16,}|"
+                    + "password|passwd|credential|secret|private[_-]?key)\\s*[:=]\\s*)" + "([^\\s,;\\\"'<>]+)");
+    private static final Pattern HEADER_BLOCK = Pattern
+            .compile("(?i)(?<![\\\"'])((?:headers?|cookies?)\\s*[:=]\\s*)(?:\\{[^\\r\\n]*|[^\\r\\n]+)");
+    private static final Pattern COOKIE_HEADER = Pattern
+            .compile("(?im)(?<![\\\"'])(\\b(?:cookie|set-cookie)\\s*:\\s*)[^\\r\\n]+");
+    private static final Pattern KNOWN_TOKEN = Pattern
+            .compile("(?i)\\b(?:gh[pousr]_[A-Za-z0-9_]{16,}|github_pat_[A-Za-z0-9_]{16,}|"
                     + "sk-[A-Za-z0-9_-]{16,}|xox[baprs]-[A-Za-z0-9-]{16,})\\b");
 
     private RunTimelineSanitizer() {
@@ -60,11 +58,8 @@ public final class RunTimelineSanitizer {
         return redactPlainText(redactJsonCredentialFields(text));
     }
 
-    /**
-     * Scans once for quoted JSON property names and redacts sensitive values in place.
-     * This also handles truncated JSON, where there is no closing object for a parser
-     * or brace matcher to find.
-     */
+    /** Scans once for quoted JSON property names and redacts sensitive values in place. This also handles truncated
+     * JSON, where there is no closing object for a parser or brace matcher to find. */
     private static String redactJsonCredentialFields(String text) {
         StringBuilder result = new StringBuilder(text.length());
         int copyFrom = 0;
@@ -134,8 +129,8 @@ public final class RunTimelineSanitizer {
             return findCompoundValueEnd(text, start);
         }
         int end = start;
-        while (end < text.length() && text.charAt(end) != ',' && text.charAt(end) != '}'
-                && text.charAt(end) != ']' && text.charAt(end) != '\r' && text.charAt(end) != '\n') {
+        while (end < text.length() && text.charAt(end) != ',' && text.charAt(end) != '}' && text.charAt(end) != ']'
+                && text.charAt(end) != '\r' && text.charAt(end) != '\n') {
             end++;
         }
         return end;
@@ -210,9 +205,10 @@ public final class RunTimelineSanitizer {
             Iterator<Map.Entry<String, JsonNode>> fields = node.fields();
             while (fields.hasNext()) {
                 Map.Entry<String, JsonNode> field = fields.next();
-                safe.set(field.getKey(), isCredentialField(field.getKey())
-                        ? JSON.getNodeFactory().textNode(REDACTED)
-                        : redactNode(field.getValue()));
+                safe.set(field.getKey(),
+                        isCredentialField(field.getKey())
+                                ? JSON.getNodeFactory().textNode(REDACTED)
+                                : redactNode(field.getValue()));
             }
             return safe;
         }
@@ -230,9 +226,8 @@ public final class RunTimelineSanitizer {
     private static boolean isCredentialField(String fieldName) {
         String normalized = fieldName.toLowerCase().replaceAll("[^a-z0-9]", "");
         return normalized.contains("password") || normalized.contains("passwd") || normalized.contains("secret")
-                || normalized.contains("token") || normalized.contains("apikey")
-                || normalized.contains("authorization") || normalized.contains("credential")
-                || normalized.contains("privatekey") || normalized.contains("accesskey")
-                || normalized.contains("header") || normalized.contains("cookie");
+                || normalized.contains("token") || normalized.contains("apikey") || normalized.contains("authorization")
+                || normalized.contains("credential") || normalized.contains("privatekey")
+                || normalized.contains("accesskey") || normalized.contains("header") || normalized.contains("cookie");
     }
 }

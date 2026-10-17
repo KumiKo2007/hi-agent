@@ -71,12 +71,15 @@ public class McpUrlProviderService implements McpEndpointResolver {
     @Override
     public McpEndpoint resolve(String mcpServerName, String userId) {
         UserToolEntity installedTool = toolDomainService.getUserInstalledToolByServerName(mcpServerName, userId);
-        ToolEntity tool = installedTool == null ? null
+        ToolEntity tool = installedTool == null
+                ? null
                 : toolDomainService.getToolByServerNameForUsage(mcpServerName, userId);
         McpTransportType transportType = installedTool == null || installedTool.getTransportType() == null
-                ? McpTransportType.LEGACY_SSE : installedTool.getTransportType();
+                ? McpTransportType.LEGACY_SSE
+                : installedTool.getTransportType();
         boolean global = tool != null && tool.isGlobal();
-        String url = global ? buildReviewContainerUrl(mcpServerName, transportType)
+        String url = global
+                ? buildReviewContainerUrl(mcpServerName, transportType)
                 : buildUserContainerUrl(mcpServerName, userId, transportType);
         return new McpEndpoint(transportType, URI.create(url));
     }

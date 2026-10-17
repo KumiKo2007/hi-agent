@@ -109,7 +109,8 @@ public class RunAppService {
         SessionEntity session = sessions.getSession(sessionId, userId);
         PinnedRunDefinition pinned = pinDefinition(session.getAgentId(), userId);
         String knowledgeVersionId = knowledgeVersions.resolve(session.getAgentId(), userId, knowledgeBaseId);
-        String targetRepository = requestedTargetRepository == null || requestedTargetRepository.isBlank() ? null
+        String targetRepository = requestedTargetRepository == null || requestedTargetRepository.isBlank()
+                ? null
                 : requireTargetRepositoryAuthorizer().authorize(userId, requestedTargetRepository);
         RunEntity run = RunEntity.create(userId, sessionId, session.getAgentId(), goal, knowledgeVersionId);
         run.setTargetRepository(targetRepository);
@@ -255,25 +256,24 @@ public class RunAppService {
         if ("CONFIRM_NOT_CREATED".equals(outcome) && normalizedEvidenceReference == null) {
             throw new BusinessException("确认未创建并重试时必须提供可核验的依据引用");
         }
-        if (normalizedEvidenceReference != null
-                && !requireApprovalReferenceValidator().isValidEvidenceReference(normalizedEvidenceReference, approval)) {
+        if (normalizedEvidenceReference != null && !requireApprovalReferenceValidator()
+                .isValidEvidenceReference(normalizedEvidenceReference, approval)) {
             throw new BusinessException("依据引用必须是支持的记录 ID 或目标仓库中的规范 Issue URL");
         }
         if ("RECORD_CREATED".equals(outcome) && (externalResourceId == null || externalResourceId.isBlank())) {
             throw new BusinessException("记录已创建的结果时必须提供外部资源标识");
         }
         String normalizedExternalResourceId = externalResourceId == null ? null : externalResourceId.trim();
-        if ("RECORD_CREATED".equals(outcome)
-                && !requireApprovalReferenceValidator().isValidExternalResourceId(normalizedExternalResourceId,
-                        approval.getTargetRepository())) {
+        if ("RECORD_CREATED".equals(outcome) && !requireApprovalReferenceValidator()
+                .isValidExternalResourceId(normalizedExternalResourceId, approval.getTargetRepository())) {
             throw new BusinessException("外部资源标识必须是安全的资源 ID 或目标仓库中的 Issue URL");
         }
         if (!List.of("RECORD_CREATED", "CONFIRM_NOT_CREATED", "STOP").contains(outcome)) {
             throw new BusinessException("结果核对决定无效");
         }
         if (!store.resolveReconciliation(runId, approvalId, userId, outcome,
-                RunTimelineSanitizer.redactText(evidence.trim()),
-                normalizedEvidenceReference, normalizedExternalResourceId)) {
+                RunTimelineSanitizer.redactText(evidence.trim()), normalizedEvidenceReference,
+                normalizedExternalResourceId)) {
             throw new BusinessException("结果核对决定已处理或运行已变化");
         }
         appendTimeline(RunTimelineEvents.reconciliation(runId, firstStepId(runId), approval, outcome, userId));

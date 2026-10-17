@@ -27,7 +27,8 @@ class RunAppServiceApprovalPolicyTest {
             }
             return null;
         });
-        RunAppService service = new RunAppService(sessions(), store, ignored -> { });
+        RunAppService service = new RunAppService(sessions(), store, ignored -> {
+        });
 
         RunDTO result = service.start("session-1", "Create an issue", "owner",
                 RunApprovalPolicy.REQUIRE_APPROVAL_FOR_ALL_WRITES.name());
@@ -39,7 +40,8 @@ class RunAppServiceApprovalPolicyTest {
     @Test
     void shouldRejectUnknownPoliciesInsteadOfAllowingThemToWeakenApproval() {
         RunStore store = proxy(RunStore.class, (method, args) -> null);
-        RunAppService service = new RunAppService(sessions(), store, ignored -> { });
+        RunAppService service = new RunAppService(sessions(), store, ignored -> {
+        });
 
         assertThrows(BusinessException.class, () -> service.start("session-1", "Create an issue", "owner", "NONE"));
     }
@@ -58,7 +60,7 @@ class RunAppServiceApprovalPolicyTest {
     }
 
     private static <T> T proxy(Class<T> type, BiFunction<java.lang.reflect.Method, Object[], Object> handler) {
-        return type.cast(Proxy.newProxyInstance(type.getClassLoader(), new Class<?>[] { type },
+        return type.cast(Proxy.newProxyInstance(type.getClassLoader(), new Class<?>[]{type},
                 (ignored, method, args) -> handler.apply(method, args)));
     }
 }

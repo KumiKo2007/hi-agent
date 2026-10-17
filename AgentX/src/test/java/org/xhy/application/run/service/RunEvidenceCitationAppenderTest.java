@@ -19,7 +19,8 @@ class RunEvidenceCitationAppenderTest {
         String result = RunEvidenceCitationAppender.appendToBody(arguments, List.of(citation));
 
         assertTrue(result.contains("\"title\":\"Fix setup\""));
-        assertTrue(result.contains("\"body\":\"Document the setup steps.\\n\\n---\\n\\n### Sources\\n- [S1] `setup guide.md`, page 4\""));
+        assertTrue(result.contains(
+                "\"body\":\"Document the setup steps.\\n\\n---\\n\\n### Sources\\n- [S1] `setup guide.md`, page 4\""));
         assertEquals("octo/project", org.xhy.application.tool.service.McpSchema.targetRepository(result));
     }
 

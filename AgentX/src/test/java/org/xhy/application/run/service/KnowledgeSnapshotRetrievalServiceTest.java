@@ -94,8 +94,8 @@ class KnowledgeSnapshotRetrievalServiceTest {
                         "The database migration follows the existing backup procedure.", 1)),
                 List.of(versionFile("file-1", "migration.md")));
 
-        KnowledgeRetrievalResult result = service.retrieve("version-1",
-                "database migration, token rotation, recovery", "owner");
+        KnowledgeRetrievalResult result = service.retrieve("version-1", "database migration, token rotation, recovery",
+                "owner");
 
         assertFalse(result.hasEvidence());
         assertFalse(result.canPublish());
@@ -109,8 +109,8 @@ class KnowledgeSnapshotRetrievalServiceTest {
                         "The database migration coordinates token rotation and recovery.", 1)),
                 List.of(versionFile("file-1", "migration.md")));
 
-        KnowledgeRetrievalResult result = service.retrieve("version-1",
-                "database migration, token rotation, recovery", "owner");
+        KnowledgeRetrievalResult result = service.retrieve("version-1", "database migration, token rotation, recovery",
+                "owner");
 
         assertTrue(result.canPublish());
         assertEquals(1, result.getCitations().size());
@@ -121,15 +121,13 @@ class KnowledgeSnapshotRetrievalServiceTest {
     @Test
     void doesNotExceedFiveCitationsWhenTheGoalHasMoreThanFiveDistinctTopics() {
         RagVersionEntity version = readyVersion("version-1", "dataset-1", "owner");
-        List<String> topicEvidence = List.of(
-                "The database migration has a rollback plan.",
-                "Token rotation follows the security checklist.",
-                "Session recovery restores the account state.",
-                "Cache refresh invalidates stale entries.",
-                "Queue restart resumes pending jobs.",
+        List<String> topicEvidence = List.of("The database migration has a rollback plan.",
+                "Token rotation follows the security checklist.", "Session recovery restores the account state.",
+                "Cache refresh invalidates stale entries.", "Queue restart resumes pending jobs.",
                 "Permission audit records role changes.");
-        List<RagVersionDocumentEntity> documents = topicEvidence.stream().map((content) ->
-                versionDocument("version-1", "file-1", "doc-" + content.hashCode(), content, 1)).toList();
+        List<RagVersionDocumentEntity> documents = topicEvidence.stream()
+                .map((content) -> versionDocument("version-1", "file-1", "doc-" + content.hashCode(), content, 1))
+                .toList();
         KnowledgeSnapshotRetrievalService service = retrievalService(version, documents,
                 List.of(versionFile("file-1", "operations.md")));
 
@@ -184,27 +182,31 @@ class KnowledgeSnapshotRetrievalServiceTest {
 
     private static KnowledgeSnapshotRetrievalService retrievalService(RagVersionEntity version,
             List<RagVersionDocumentEntity> snapshotDocuments, List<RagVersionFileEntity> snapshotFiles) {
-        RagVersionRepository versionRepository = proxy(RagVersionRepository.class,
-                (method, args) -> method.getName().equals("selectOne") ? version : defaultValue(method.getReturnType()));
+        RagVersionRepository versionRepository = proxy(RagVersionRepository.class, (method,
+                args) -> method.getName().equals("selectOne") ? version : defaultValue(method.getReturnType()));
         RagVersionDocumentRepository documentRepository = proxy(RagVersionDocumentRepository.class,
-                (method, args) -> method.getName().equals("selectList") ? snapshotDocuments
+                (method, args) -> method.getName().equals("selectList")
+                        ? snapshotDocuments
                         : defaultValue(method.getReturnType()));
-        RagVersionFileRepository fileRepository = proxy(RagVersionFileRepository.class,
-                (method, args) -> method.getName().equals("selectList") ? snapshotFiles
-                        : defaultValue(method.getReturnType()));
+        RagVersionFileRepository fileRepository = proxy(RagVersionFileRepository.class, (method,
+                args) -> method.getName().equals("selectList") ? snapshotFiles : defaultValue(method.getReturnType()));
         return new KnowledgeSnapshotRetrievalService(versionRepository, documentRepository, fileRepository);
     }
 
     private static <T> T proxy(Class<T> type, BiFunction<Method, Object[], Object> handler) {
-        return type.cast(Proxy.newProxyInstance(type.getClassLoader(), new Class<?>[] { type },
+        return type.cast(Proxy.newProxyInstance(type.getClassLoader(), new Class<?>[]{type},
                 (ignored, method, args) -> handler.apply(method, args)));
     }
 
     private static Object defaultValue(Class<?> type) {
-        if (!type.isPrimitive()) return null;
-        if (type == boolean.class) return false;
-        if (type == int.class) return 0;
-        if (type == long.class) return 0L;
+        if (!type.isPrimitive())
+            return null;
+        if (type == boolean.class)
+            return false;
+        if (type == int.class)
+            return 0;
+        if (type == long.class)
+            return 0L;
         return null;
     }
 

@@ -33,20 +33,17 @@ class RunAssemblerTimelineTest {
         approval.setActionName("create_issue");
         approval.setTargetRepository("octo/project");
         approval.setArguments("{\"repository\":\"octo/project\",\"title\":\"Review plan\","
-                + "\"body\":\"See [S1]\",\"api_key\":\"" + SENTINEL + "\","
-                + "\"headers\":{\"Cookie\":\"" + COOKIE_SENTINEL
-                + "\",\"User-Agent\":\"agentSentinelabcdefghijklmnopqrstuvwxyz\"},"
+                + "\"body\":\"See [S1]\",\"api_key\":\"" + SENTINEL + "\"," + "\"headers\":{\"Cookie\":\""
+                + COOKIE_SENTINEL + "\",\"User-Agent\":\"agentSentinelabcdefghijklmnopqrstuvwxyz\"},"
                 + "\"cookies\":{\"session\":\"sessionSentinelabcdefghijklmnopqrstuvwxyz\"}}");
 
-        RunTimelineEventEntity modelCall = RunTimelineEventEntity.create("run", "step",
-                RunTimelineEventType.MODEL_CALL, "COMPLETED",
-                RunTimelineEventData.modelUsage("safe-model", 13, 5, true, 17));
+        RunTimelineEventEntity modelCall = RunTimelineEventEntity.create("run", "step", RunTimelineEventType.MODEL_CALL,
+                "COMPLETED", RunTimelineEventData.modelUsage("safe-model", 13, 5, true, 17));
         RunTimelineEventEntity retrieval = RunTimelineEventEntity.create("run", "step",
                 RunTimelineEventType.KNOWLEDGE_SOURCE, "USED",
                 RunTimelineEventData.source("knowledge-v1", "doc-1", "file-1", "guide.md", 2, "/rag/datasets/1"));
-        RunTimelineEventEntity failure = RunTimelineEventEntity.create("run", "step",
-                RunTimelineEventType.RUN_FAILED, "FAILED",
-                RunTimelineEventData.failure(RunFailureCode.INSUFFICIENT_EVIDENCE.name()));
+        RunTimelineEventEntity failure = RunTimelineEventEntity.create("run", "step", RunTimelineEventType.RUN_FAILED,
+                "FAILED", RunTimelineEventData.failure(RunFailureCode.INSUFFICIENT_EVIDENCE.name()));
 
         RunDTO dto = RunAssembler.toDTO(run, List.of(), approval, List.of(retrieval, modelCall, failure));
 
@@ -59,7 +56,8 @@ class RunAssemblerTimelineTest {
         assertFalse(dto.getApproval().getArguments().contains("agentSentinelabcdefghijklmnopqrstuvwxyz"));
         assertFalse(dto.getApproval().getArguments().contains("sessionSentinelabcdefghijklmnopqrstuvwxyz"));
         assertFalse(dto.getResult().contains(COOKIE_SENTINEL));
-        assertTrue(approval.getArguments().contains(SENTINEL), "owner preview redaction must preserve execution snapshot");
+        assertTrue(approval.getArguments().contains(SENTINEL),
+                "owner preview redaction must preserve execution snapshot");
         assertEquals("ADD_OR_SELECT_EVIDENCE", dto.getNextAction());
         assertEquals(1, dto.getModelUsage().modelCallCount());
         assertEquals(13, dto.getModelUsage().inputTokens());
@@ -67,21 +65,20 @@ class RunAssemblerTimelineTest {
         assertTrue(dto.getModelUsage().complete());
         assertEquals(List.of("KNOWLEDGE_SOURCE", "MODEL_CALL", "RUN_FAILED"),
                 dto.getTimeline().stream().map(event -> event.eventType()).toList());
-        assertTrue(dto.getTimeline().stream().noneMatch(event -> event.details().toString().contains(SENTINEL)
-                || event.details().toString().contains(COOKIE_SENTINEL)
-                || event.details().toString().contains("agentSentinelabcdefghijklmnopqrstuvwxyz")));
+        assertTrue(dto.getTimeline().stream()
+                .noneMatch(event -> event.details().toString().contains(SENTINEL)
+                        || event.details().toString().contains(COOKIE_SENTINEL)
+                        || event.details().toString().contains("agentSentinelabcdefghijklmnopqrstuvwxyz")));
     }
 
     @Test
     void shouldMarkAggregatedUsageIncompleteWhenProviderOmitsTokenCounts() {
         RunEntity run = RunEntity.create("owner", "session", "agent", "goal");
         run.setStatus("RUNNING");
-        RunTimelineEventEntity available = RunTimelineEventEntity.create("run", "step",
-                RunTimelineEventType.MODEL_CALL, "COMPLETED",
-                RunTimelineEventData.modelUsage("safe-model", 4, 2, true, 1));
-        RunTimelineEventEntity missing = RunTimelineEventEntity.create("run", "step",
-                RunTimelineEventType.MODEL_CALL, "COMPLETED",
-                RunTimelineEventData.modelUsage("safe-model", null, null, false, 1));
+        RunTimelineEventEntity available = RunTimelineEventEntity.create("run", "step", RunTimelineEventType.MODEL_CALL,
+                "COMPLETED", RunTimelineEventData.modelUsage("safe-model", 4, 2, true, 1));
+        RunTimelineEventEntity missing = RunTimelineEventEntity.create("run", "step", RunTimelineEventType.MODEL_CALL,
+                "COMPLETED", RunTimelineEventData.modelUsage("safe-model", null, null, false, 1));
 
         RunDTO dto = RunAssembler.toDTO(run, List.of(), null, List.of(available, missing));
 

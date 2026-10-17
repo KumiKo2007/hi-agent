@@ -24,10 +24,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class ToolBrokerGenericActionTest {
     private static final String ARGUMENTS = "{\"repository\":\"owner/repo\",\"title\":\"Title\",\"body\":\"Details\"}";
-    private static final Map<String, Object> SCHEMA = Map.of("type", "object", "properties", Map.of(
-            "repository", Map.of("type", "string"), "title", Map.of("type", "string"),
-            "body", Map.of("type", "string")), "required", List.of("repository", "title", "body"),
-            "additionalProperties", false);
+    private static final Map<String, Object> SCHEMA = Map.of("type", "object", "properties",
+            Map.of("repository", Map.of("type", "string"), "title", Map.of("type", "string"), "body",
+                    Map.of("type", "string")),
+            "required", List.of("repository", "title", "body"), "additionalProperties", false);
     private static final JsonObjectSchema MCP_SCHEMA = JsonObjectSchema.builder().addStringProperty("repository")
             .addStringProperty("title").addStringProperty("body").required("repository", "title", "body")
             .additionalProperties(false).build();
@@ -36,30 +36,63 @@ class ToolBrokerGenericActionTest {
     void genericBrokerDoesNotInferGitHubRepositoryOrInjectConnectorMarkers() {
         AtomicInteger calls = new AtomicInteger();
         McpClient client = new McpClient() {
-            @Override public String key() { return "custom"; }
-            @Override public List<ToolSpecification> listTools() {
+            @Override
+            public String key() {
+                return "custom";
+            }
+            @Override
+            public List<ToolSpecification> listTools() {
                 return List.of(ToolSpecification.builder().name("create_issue").description("Create issue")
                         .parameters(MCP_SCHEMA).build());
             }
-            @Override public String executeTool(ToolExecutionRequest request) { calls.incrementAndGet(); return "created"; }
-            @Override public List<McpResource> listResources() { throw new UnsupportedOperationException(); }
-            @Override public List<McpResourceTemplate> listResourceTemplates() { throw new UnsupportedOperationException(); }
-            @Override public McpReadResourceResult readResource(String uri) { throw new UnsupportedOperationException(); }
-            @Override public List<McpPrompt> listPrompts() { throw new UnsupportedOperationException(); }
-            @Override public McpGetPromptResult getPrompt(String name, Map<String, Object> arguments) {
+            @Override
+            public String executeTool(ToolExecutionRequest request) {
+                calls.incrementAndGet();
+                return "created";
+            }
+            @Override
+            public List<McpResource> listResources() {
                 throw new UnsupportedOperationException();
             }
-            @Override public void checkHealth() { throw new UnsupportedOperationException(); }
-            @Override public void presetParameters(List<PresetParameter> parameters) { throw new UnsupportedOperationException(); }
-            @Override public void close() { }
+            @Override
+            public List<McpResourceTemplate> listResourceTemplates() {
+                throw new UnsupportedOperationException();
+            }
+            @Override
+            public McpReadResourceResult readResource(String uri) {
+                throw new UnsupportedOperationException();
+            }
+            @Override
+            public List<McpPrompt> listPrompts() {
+                throw new UnsupportedOperationException();
+            }
+            @Override
+            public McpGetPromptResult getPrompt(String name, Map<String, Object> arguments) {
+                throw new UnsupportedOperationException();
+            }
+            @Override
+            public void checkHealth() {
+                throw new UnsupportedOperationException();
+            }
+            @Override
+            public void presetParameters(List<PresetParameter> parameters) {
+                throw new UnsupportedOperationException();
+            }
+            @Override
+            public void close() {
+            }
         };
         RegisteredToolAction action = new RegisteredToolAction("custom-service", "custom", "create_issue",
                 "Create issue", SCHEMA, ToolActionClassification.WRITE_REQUIRES_APPROVAL);
         ToolActionCatalog catalog = new ToolActionCatalog() {
-            @Override public RegisteredToolAction require(AgentEntity agent, String user, String service, String name) {
+            @Override
+            public RegisteredToolAction require(AgentEntity agent, String user, String service, String name) {
                 return action;
             }
-            @Override public List<RegisteredToolAction> list(AgentEntity agent, String user) { return List.of(action); }
+            @Override
+            public List<RegisteredToolAction> list(AgentEntity agent, String user) {
+                return List.of(action);
+            }
         };
         ToolBroker broker = new ToolBroker(catalog, (server, user) -> client);
 

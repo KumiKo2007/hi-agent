@@ -4,8 +4,7 @@ import org.xhy.infrastructure.exception.BusinessException;
 
 /** Approval policy selected for a single run. Users can only make creator policy stricter. */
 public enum RunApprovalPolicy {
-    CREATOR_DEFAULT,
-    REQUIRE_APPROVAL_FOR_ALL_WRITES;
+    CREATOR_DEFAULT, REQUIRE_APPROVAL_FOR_ALL_WRITES;
 
     public static RunApprovalPolicy fromValue(String value) {
         if (value == null || value.isBlank()) {

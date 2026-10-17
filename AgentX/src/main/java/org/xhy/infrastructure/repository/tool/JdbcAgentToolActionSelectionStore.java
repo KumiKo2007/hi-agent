@@ -43,8 +43,7 @@ public class JdbcAgentToolActionSelectionStore implements AgentToolActionSelecti
 
         for (String actionName : existing) {
             if (!requested.contains(actionName)) {
-                jdbc.update(
-                        "DELETE FROM agent_tool_actions WHERE agent_id = ? AND service_id = ? AND action_name = ?",
+                jdbc.update("DELETE FROM agent_tool_actions WHERE agent_id = ? AND service_id = ? AND action_name = ?",
                         agentId, serviceId, actionName);
             }
         }
@@ -80,10 +79,8 @@ public class JdbcAgentToolActionSelectionStore implements AgentToolActionSelecti
         jdbc.update("DELETE FROM agent_tool_action_preauthorizations WHERE agent_id = ? AND service_id = ?", agentId,
                 serviceId);
         for (String actionName : actionNames) {
-            jdbc.update(
-                    "INSERT INTO agent_tool_action_preauthorizations (agent_id, service_id, action_name) "
-                            + "VALUES (?, ?, ?)",
-                    agentId, serviceId, actionName);
+            jdbc.update("INSERT INTO agent_tool_action_preauthorizations (agent_id, service_id, action_name) "
+                    + "VALUES (?, ?, ?)", agentId, serviceId, actionName);
         }
     }
 

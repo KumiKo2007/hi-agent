@@ -8,6 +8,7 @@ public interface RunTimelineSink {
     void append(RunTimelineEventEntity event);
 
     static RunTimelineSink noop() {
-        return event -> { };
+        return event -> {
+        };
     }
 }

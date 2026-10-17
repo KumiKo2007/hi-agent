@@ -38,14 +38,13 @@ public class ToolBroker {
         this(catalog, clients, (serverName, userId, targetRepository) -> clients.open(serverName, userId), List.of());
     }
 
-    public ToolBroker(ToolActionCatalog catalog, McpClientFactory clients,
-            McpActionClientProvider actionClients) {
+    public ToolBroker(ToolActionCatalog catalog, McpClientFactory clients, McpActionClientProvider actionClients) {
         this(catalog, clients, actionClients, List.of());
     }
 
     @Autowired
-    public ToolBroker(ToolActionCatalog catalog, McpClientFactory clients,
-            McpActionClientProvider actionClients, List<McpToolActionAdapter> actionAdapters) {
+    public ToolBroker(ToolActionCatalog catalog, McpClientFactory clients, McpActionClientProvider actionClients,
+            List<McpToolActionAdapter> actionAdapters) {
         this.catalog = catalog;
         this.actionClients = actionClients;
         this.actionAdapters = actionAdapters == null ? List.of() : List.copyOf(actionAdapters);
@@ -279,8 +278,8 @@ public class ToolBroker {
         return resolved;
     }
 
-    private String prepareApprovalArguments(RegisteredToolAction action, Map<String, Object> schema,
-            String arguments, String intentId) {
+    private String prepareApprovalArguments(RegisteredToolAction action, Map<String, Object> schema, String arguments,
+            String intentId) {
         String prepared = arguments;
         for (McpToolActionAdapter adapter : actionAdapters) {
             if (adapter.supports(action)) {

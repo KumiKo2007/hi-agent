@@ -49,7 +49,8 @@ class JdbcAgentToolActionSelectionStoreTest {
                 removedSelections++;
                 return 1;
             }
-            if (sql.startsWith("DELETE FROM agent_tool_actions WHERE agent_id = ? AND service_id = ? AND action_name")) {
+            if (sql.startsWith(
+                    "DELETE FROM agent_tool_actions WHERE agent_id = ? AND service_id = ? AND action_name")) {
                 String actionName = (String) args[2];
                 selectedActions.remove(actionName);
                 preauthorizedActions.remove(actionName);

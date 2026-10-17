@@ -98,12 +98,10 @@ class ToolBrokerApprovalTest {
         RunApprovalEntity unapproved = approval("kumiko2007/hi-agent", ARGS, SCHEMA);
         unapproved.setStatus("PENDING");
 
-        assertThrows(BusinessException.class,
-                () -> broker.executeApprovedWrite(agent(), "owner", changedTarget, () -> {
-                }));
-        assertThrows(BusinessException.class,
-                () -> broker.executeApprovedWrite(agent(), "owner", unapproved, () -> {
-                }));
+        assertThrows(BusinessException.class, () -> broker.executeApprovedWrite(agent(), "owner", changedTarget, () -> {
+        }));
+        assertThrows(BusinessException.class, () -> broker.executeApprovedWrite(agent(), "owner", unapproved, () -> {
+        }));
         assertEquals(0, mcp.calls.get());
     }
 
@@ -209,8 +207,8 @@ class ToolBrokerApprovalTest {
                 return List.of(action);
             }
         };
-        return new ToolBroker(catalog, (serverName, userId) -> mcp,
-                (serverName, userId, targetRepository) -> mcp, List.of(new GitHubMcpToolActionAdapter()));
+        return new ToolBroker(catalog, (serverName, userId) -> mcp, (serverName, userId, targetRepository) -> mcp,
+                List.of(new GitHubMcpToolActionAdapter()));
     }
 
     private static RegisteredToolAction action(Map<String, Object> schema) {

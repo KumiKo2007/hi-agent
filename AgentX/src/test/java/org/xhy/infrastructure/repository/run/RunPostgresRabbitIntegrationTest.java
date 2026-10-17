@@ -68,18 +68,12 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 /** 在可用的 PostgreSQL/RabbitMQ 环境中检验公开 HTTP 到真实持久化和派发的路径。 */
 @EnabledIfEnvironmentVariable(named = "RUN_DELIVERY_INTEGRATION", matches = "true")
 class RunPostgresRabbitIntegrationTest {
-    static final List<String> RUN_MIGRATION_RESOURCES = List.of(
-            "V20261015001__create_agent_runs.sql",
-            "V20261015002__create_tool_action_policies.sql",
-            "V20261015004__run_delivery_lease.sql",
-            "V20261016001__pin_run_agent_version.sql",
-            "V20261016008__pin_run_knowledge_version.sql",
-            "V20261017002__persist_run_approvals.sql",
-            "V20261017003__add_creator_approval_policies.sql",
-            "V20261017004__persist_approved_external_resource.sql",
-            "V20261017005__audit_run_reconciliation.sql",
-            "V20261017006__add_reconciliation_evidence_references.sql",
-            "V20261017007__pin_run_target_repository.sql",
+    static final List<String> RUN_MIGRATION_RESOURCES = List.of("V20261015001__create_agent_runs.sql",
+            "V20261015002__create_tool_action_policies.sql", "V20261015004__run_delivery_lease.sql",
+            "V20261016001__pin_run_agent_version.sql", "V20261016008__pin_run_knowledge_version.sql",
+            "V20261017002__persist_run_approvals.sql", "V20261017003__add_creator_approval_policies.sql",
+            "V20261017004__persist_approved_external_resource.sql", "V20261017005__audit_run_reconciliation.sql",
+            "V20261017006__add_reconciliation_evidence_references.sql", "V20261017007__pin_run_target_repository.sql",
             "V20261017008__add_run_timeline_events.sql");
 
     private final ObjectMapper json = new ObjectMapper();
@@ -267,8 +261,7 @@ class RunPostgresRabbitIntegrationTest {
     private void createSchema(DataSource dataSource) throws Exception {
         try (Connection connection = dataSource.getConnection()) {
             for (String migration : RUN_MIGRATION_RESOURCES) {
-                ScriptUtils.executeSqlScript(connection,
-                        new ClassPathResource("db/migration/" + migration));
+                ScriptUtils.executeSqlScript(connection, new ClassPathResource("db/migration/" + migration));
             }
         }
     }

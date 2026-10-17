@@ -34,8 +34,8 @@ public class AppFetchingToolsProcessor implements AppToolStateProcessor {
      * 
      * @param mcpGatewayService MCP网关服务
      * @param reviewContainerService 审核容器服务 */
-    public AppFetchingToolsProcessor(MCPGatewayService mcpGatewayService,
-            ReviewContainerService reviewContainerService, McpTransportClientFactory mcpClients) {
+    public AppFetchingToolsProcessor(MCPGatewayService mcpGatewayService, ReviewContainerService reviewContainerService,
+            McpTransportClientFactory mcpClients) {
         this.mcpGatewayService = mcpGatewayService;
         this.reviewContainerService = reviewContainerService;
         this.mcpClients = mcpClients;
@@ -84,10 +84,11 @@ public class AppFetchingToolsProcessor implements AppToolStateProcessor {
             logger.info("从审核容器 {}:{} 获取工具 {} 的列表", reviewConnection.getIpAddress(), reviewConnection.getPort(),
                     toolName);
 
-            McpTransportType transportType = tool.getTransportType() == null ? McpTransportType.LEGACY_SSE
+            McpTransportType transportType = tool.getTransportType() == null
+                    ? McpTransportType.LEGACY_SSE
                     : tool.getTransportType();
-            String endpointUrl = mcpGatewayService.buildReviewContainerUrl(toolName,
-                    reviewConnection.getIpAddress(), reviewConnection.getPort(), transportType);
+            String endpointUrl = mcpGatewayService.buildReviewContainerUrl(toolName, reviewConnection.getIpAddress(),
+                    reviewConnection.getPort(), transportType);
             List<ToolDefinition> toolDefinitions;
             try (McpClient client = mcpClients.open(new McpEndpoint(transportType, URI.create(endpointUrl)))) {
                 toolDefinitions = ToolSpecificationConverter.convert(client.listTools());

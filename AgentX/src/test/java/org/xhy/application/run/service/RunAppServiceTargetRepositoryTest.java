@@ -65,8 +65,8 @@ class RunAppServiceTargetRepositoryTest {
     }
 
     private static SessionDomainService sessions(SessionEntity session) {
-        SessionRepository repository = proxy(SessionRepository.class, (method, args) ->
-                "selectOne".equals(method.getName()) ? session : defaultValue(method.getReturnType()));
+        SessionRepository repository = proxy(SessionRepository.class, (method,
+                args) -> "selectOne".equals(method.getName()) ? session : defaultValue(method.getReturnType()));
         return new SessionDomainService(repository);
     }
 
@@ -96,15 +96,19 @@ class RunAppServiceTargetRepositoryTest {
     }
 
     private static <T> T proxy(Class<T> type, BiFunction<java.lang.reflect.Method, Object[], Object> handler) {
-        return type.cast(Proxy.newProxyInstance(type.getClassLoader(), new Class<?>[] { type },
+        return type.cast(Proxy.newProxyInstance(type.getClassLoader(), new Class<?>[]{type},
                 (ignored, method, args) -> handler.apply(method, args)));
     }
 
     private static Object defaultValue(Class<?> type) {
-        if (!type.isPrimitive()) return null;
-        if (type == boolean.class) return false;
-        if (type == int.class) return 0;
-        if (type == long.class) return 0L;
+        if (!type.isPrimitive())
+            return null;
+        if (type == boolean.class)
+            return false;
+        if (type == int.class)
+            return 0;
+        if (type == long.class)
+            return 0L;
         return null;
     }
 

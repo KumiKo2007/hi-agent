@@ -61,8 +61,8 @@ class RunTimelineOwnershipTest {
         };
         Store store = new Store();
         Timeline timeline = new Timeline();
-        RunWorker worker = new RunWorker(store.proxy(), run -> "owner result\nCookie: answerSentinelabcdefghijklmnopqrstuvwxyz",
-                (run, approval) -> "resource",
+        RunWorker worker = new RunWorker(store.proxy(),
+                run -> "owner result\nCookie: answerSentinelabcdefghijklmnopqrstuvwxyz", (run, approval) -> "resource",
                 (run, approval) -> ApprovedActionReconciliation.unknown("unknown"), timeline);
         RunAppService service = new RunAppService(sessions, store.proxy(), worker::process, null, null, null,
                 RunKnowledgeVersionResolver.none(), null, null, timeline);
@@ -70,16 +70,19 @@ class RunTimelineOwnershipTest {
                 .setControllerAdvice(new GlobalExceptionHandler()).build();
 
         UserContext.setCurrentUserId("owner");
-        String createdBody = api.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
-                .post("/agents/sessions/session-1/runs").contentType("application/json")
-                .content("{\"goal\":\"trace this run\"}"))
+        String createdBody = api
+                .perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .post("/agents/sessions/session-1/runs").contentType("application/json")
+                        .content("{\"goal\":\"trace this run\"}"))
                 .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
         String runId = json.readTree(createdBody).path("data").path("id").asText();
-        JsonNode owner = json.readTree(api.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
-                .get("/agents/runs/" + runId)).andReturn().getResponse()
-                .getContentAsString(StandardCharsets.UTF_8)).path("data");
+        JsonNode owner = json.readTree(api
+                .perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .get("/agents/runs/" + runId))
+                .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8)).path("data");
 
-        assertEquals(List.of("RUN_CREATED", "RUN_ATTEMPT_STARTED", "RUN_COMPLETED"), eventTypes(owner.path("timeline")));
+        assertEquals(List.of("RUN_CREATED", "RUN_ATTEMPT_STARTED", "RUN_COMPLETED"),
+                eventTypes(owner.path("timeline")));
         assertEquals(runId, owner.path("timeline").get(0).path("runId").asText());
         assertEquals(owner.path("steps").get(0).path("id").asText(),
                 owner.path("timeline").get(2).path("stepId").asText());
@@ -88,9 +91,10 @@ class RunTimelineOwnershipTest {
         int ownerReadCount = timeline.reads;
 
         UserContext.setCurrentUserId("outsider");
-        JsonNode foreign = json.readTree(api.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
-                .get("/agents/runs/" + runId)).andReturn().getResponse()
-                .getContentAsString(StandardCharsets.UTF_8));
+        JsonNode foreign = json.readTree(api
+                .perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .get("/agents/runs/" + runId))
+                .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8));
 
         assertEquals(404, foreign.path("code").asInt());
         assertEquals(ownerReadCount, timeline.reads);
@@ -113,16 +117,16 @@ class RunTimelineOwnershipTest {
 
         try {
             RunWorker worker = new RunWorker(store.proxy(), ignored -> {
-                throw new BusinessException("Cookie: " + cookieSentinel + " headers={\"User-Agent\":\""
-                        + headerSentinel + "\"}");
+                throw new BusinessException(
+                        "Cookie: " + cookieSentinel + " headers={\"User-Agent\":\"" + headerSentinel + "\"}");
             }, (ignoredRun, ignoredApproval) -> "resource",
                     (ignoredRun, ignoredApproval) -> ApprovedActionReconciliation.unknown("unknown"), timeline);
             worker.process(run.getId());
 
-            String logs = appender.list.stream().map(ILoggingEvent::getFormattedMessage)
-                    .reduce("", (all, message) -> all + message);
-            String serializedTimeline = timeline.events.stream().map(RunTimelineEventEntity::getDetailsJson)
-                    .reduce("", (all, details) -> all + details);
+            String logs = appender.list.stream().map(ILoggingEvent::getFormattedMessage).reduce("",
+                    (all, message) -> all + message);
+            String serializedTimeline = timeline.events.stream().map(RunTimelineEventEntity::getDetailsJson).reduce("",
+                    (all, details) -> all + details);
             assertEquals("FAILED", store.runs.get(run.getId()).getStatus());
             assertFalse(logs.contains(cookieSentinel));
             assertFalse(logs.contains(headerSentinel));
@@ -144,14 +148,14 @@ class RunTimelineOwnershipTest {
         RunStepEntity alreadyCancelledStep = RunStepEntity.modelCall(alreadyCancelled.getId());
         alreadyCancelledStore.proxy().createRunWithStep(alreadyCancelled, alreadyCancelledStep);
         alreadyCancelled.cancel();
-        alreadyCancelledTimeline.append(RunTimelineEvents.runCancelled(alreadyCancelled.getId(),
-                alreadyCancelledStep.getId()));
-        RunAppService alreadyCancelledService = new RunAppService(null, alreadyCancelledStore.proxy(), ignored -> {},
-                null, null, null, RunKnowledgeVersionResolver.none(), null, null, alreadyCancelledTimeline);
+        alreadyCancelledTimeline
+                .append(RunTimelineEvents.runCancelled(alreadyCancelled.getId(), alreadyCancelledStep.getId()));
+        RunAppService alreadyCancelledService = new RunAppService(null, alreadyCancelledStore.proxy(), ignored -> {
+        }, null, null, null, RunKnowledgeVersionResolver.none(), null, null, alreadyCancelledTimeline);
 
         var alreadyCancelledResponse = alreadyCancelledService.cancel(alreadyCancelled.getId(), "owner");
-        assertEquals(List.of("RUN_CANCELLED"), alreadyCancelledResponse.getTimeline().stream()
-                .map(event -> event.eventType()).toList());
+        assertEquals(List.of("RUN_CANCELLED"),
+                alreadyCancelledResponse.getTimeline().stream().map(event -> event.eventType()).toList());
 
         Store racedStore = new Store();
         Timeline racedTimeline = new Timeline();
@@ -161,12 +165,12 @@ class RunTimelineOwnershipTest {
         racedTimeline.append(RunTimelineEvents.runCreated(racedRun.getId(), racedStep.getId()));
         racedTimeline.append(RunTimelineEvents.runCancelled(racedRun.getId(), racedStep.getId()));
         racedStore.cancelDuringFailedAttempt = true;
-        RunAppService racedService = new RunAppService(null, racedStore.proxy(), ignored -> {}, null, null, null,
-                RunKnowledgeVersionResolver.none(), null, null, racedTimeline);
+        RunAppService racedService = new RunAppService(null, racedStore.proxy(), ignored -> {
+        }, null, null, null, RunKnowledgeVersionResolver.none(), null, null, racedTimeline);
 
         var racedResponse = racedService.cancel(racedRun.getId(), "owner");
-        assertEquals(List.of("RUN_CREATED", "RUN_CANCELLED"), racedResponse.getTimeline().stream()
-                .map(event -> event.eventType()).toList());
+        assertEquals(List.of("RUN_CREATED", "RUN_CANCELLED"),
+                racedResponse.getTimeline().stream().map(event -> event.eventType()).toList());
     }
 
     private static List<String> eventTypes(JsonNode events) {
@@ -179,8 +183,12 @@ class RunTimelineOwnershipTest {
         private final List<RunTimelineEventEntity> events = new ArrayList<>();
         private int reads;
 
-        @Override public void append(RunTimelineEventEntity event) { events.add(event); }
-        @Override public List<RunTimelineEventEntity> eventsForRun(String runId) {
+        @Override
+        public void append(RunTimelineEventEntity event) {
+            events.add(event);
+        }
+        @Override
+        public List<RunTimelineEventEntity> eventsForRun(String runId) {
             reads++;
             return events.stream().filter(event -> runId.equals(event.getRunId())).toList();
         }
@@ -193,34 +201,63 @@ class RunTimelineOwnershipTest {
 
         private RunStore proxy() {
             return RunStore.class.cast(Proxy.newProxyInstance(RunStore.class.getClassLoader(),
-                    new Class<?>[] { RunStore.class }, (ignored, method, args) -> switch (method.getName()) {
-                        case "createRunWithStep" -> { runs.put(((RunEntity) args[0]).getId(), (RunEntity) args[0]);
-                            steps.put(((RunStepEntity) args[1]).getRunId(), (RunStepEntity) args[1]); yield null; }
-                        case "findOwned" -> { RunEntity run = runs.get(args[0]);
-                            yield run != null && args[1].equals(run.getUserId()) ? run : null; }
+                    new Class<?>[]{RunStore.class}, (ignored, method, args) -> switch (method.getName()) {
+                        case "createRunWithStep" -> {
+                            runs.put(((RunEntity) args[0]).getId(), (RunEntity) args[0]);
+                            steps.put(((RunStepEntity) args[1]).getRunId(), (RunStepEntity) args[1]);
+                            yield null;
+                        }
+                        case "findOwned" -> {
+                            RunEntity run = runs.get(args[0]);
+                            yield run != null && args[1].equals(run.getUserId()) ? run : null;
+                        }
                         case "findForWorker" -> runs.get(args[0]);
-                        case "stepsForRun" -> { RunStepEntity step = steps.get(args[0]);
-                            yield step == null ? List.of() : List.of(step); }
+                        case "stepsForRun" -> {
+                            RunStepEntity step = steps.get(args[0]);
+                            yield step == null ? List.of() : List.of(step);
+                        }
                         case "findApprovalForRun" -> null;
-                        case "claim" -> { RunEntity run = runs.get(args[0]);
-                            if (run == null || !"PENDING".equals(run.getStatus())) yield false;
-                            run.start(); steps.get(args[0]).start(); yield true; }
-                        case "complete" -> { RunEntity run = runs.get(args[0]);
-                            if (run == null || !"RUNNING".equals(run.getStatus())) yield false;
-                            run.complete((String) args[2]); steps.get(args[0]).complete((String) args[2]); yield true; }
-                        case "fail" -> { RunEntity run = runs.get(args[0]);
-                            if (run == null || !"RUNNING".equals(run.getStatus())) yield false;
-                            run.fail((String) args[2]); steps.get(args[0]).fail((String) args[2]); yield true; }
-                        case "cancelOwned" -> { if (cancelDuringFailedAttempt) runs.get(args[0]).cancel(); yield false; }
+                        case "claim" -> {
+                            RunEntity run = runs.get(args[0]);
+                            if (run == null || !"PENDING".equals(run.getStatus()))
+                                yield false;
+                            run.start();
+                            steps.get(args[0]).start();
+                            yield true;
+                        }
+                        case "complete" -> {
+                            RunEntity run = runs.get(args[0]);
+                            if (run == null || !"RUNNING".equals(run.getStatus()))
+                                yield false;
+                            run.complete((String) args[2]);
+                            steps.get(args[0]).complete((String) args[2]);
+                            yield true;
+                        }
+                        case "fail" -> {
+                            RunEntity run = runs.get(args[0]);
+                            if (run == null || !"RUNNING".equals(run.getStatus()))
+                                yield false;
+                            run.fail((String) args[2]);
+                            steps.get(args[0]).fail((String) args[2]);
+                            yield true;
+                        }
+                        case "cancelOwned" -> {
+                            if (cancelDuringFailedAttempt)
+                                runs.get(args[0]).cancel();
+                            yield false;
+                        }
                         case "renewLease" -> true;
                         default -> defaultValue(method.getReturnType());
                     }));
         }
 
         private static Object defaultValue(Class<?> type) {
-            if (type == boolean.class) return false;
-            if (type == int.class) return 0;
-            if (type == long.class) return 0L;
+            if (type == boolean.class)
+                return false;
+            if (type == int.class)
+                return 0;
+            if (type == long.class)
+                return 0L;
             return null;
         }
     }

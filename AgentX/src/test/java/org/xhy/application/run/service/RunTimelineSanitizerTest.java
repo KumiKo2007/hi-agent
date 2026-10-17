@@ -35,8 +35,8 @@ class RunTimelineSanitizerTest {
 
     @Test
     void redactsInlineBearerAndKeyValueCredentialsInNonJsonText() {
-        String safe = RunTimelineSanitizer.redactText(
-                "MCP failed: Authorization: Bearer bearerSentinel123 api_key=inlineSentinel123 "
+        String safe = RunTimelineSanitizer
+                .redactText("MCP failed: Authorization: Bearer bearerSentinel123 api_key=inlineSentinel123 "
                         + "headers={\"Cookie\":\"headerSentinel1234567890\",\"User-Agent\":\"agentSentinel1234567890\"}");
 
         assertTrue(safe.contains("[REDACTED]"));
@@ -58,7 +58,7 @@ class RunTimelineSanitizerTest {
         String topLevel = RunTimelineSanitizer.redactText(json);
         String embedded = RunTimelineSanitizer.redactText("Retrieved metadata: " + json + " Citation [S1].");
 
-        for (String safe : new String[] { topLevel, embedded }) {
+        for (String safe : new String[]{topLevel, embedded}) {
             assertFalse(safe.contains("opaqueApiSentinel1234567890"));
             assertFalse(safe.contains("opaqueAuthSentinel1234567890"));
             assertFalse(safe.contains("opaqueHeaderSentinel1234567890"));
@@ -101,7 +101,8 @@ class RunTimelineSanitizerTest {
 
     @Test
     void redactsCookieHeaderLinesInPromptsAndLogs() {
-        String safe = RunTimelineSanitizer.redactText("Continue this task\nCookie: cookieLineSentinel1234567890\nNext line");
+        String safe = RunTimelineSanitizer
+                .redactText("Continue this task\nCookie: cookieLineSentinel1234567890\nNext line");
 
         assertTrue(safe.contains("Next line"));
         assertFalse(safe.contains("cookieLineSentinel1234567890"));
