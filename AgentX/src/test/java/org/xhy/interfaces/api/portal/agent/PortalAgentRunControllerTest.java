@@ -240,6 +240,7 @@ class PortalAgentRunControllerTest {
         AgentEntity agent = new AgentEntity();
         agent.setId("agent-1");
         agent.setUserId("owner");
+        agent.setEnabled(true);
         agent.setSystemPrompt("你是测试助手");
         AgentDomainService agents = mock(AgentDomainService.class);
         when(agents.getAgentById("agent-1")).thenReturn(agent);
