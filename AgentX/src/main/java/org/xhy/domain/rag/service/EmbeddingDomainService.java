@@ -120,6 +120,13 @@ public class EmbeddingDomainService implements MetadataConstant {
         long startTime = System.currentTimeMillis();
 
         try {
+            Set<String> readyFileIds = fileDetailRepository
+                    .selectList(Wrappers.<FileDetailEntity>lambdaQuery().in(FileDetailEntity::getDataSetId, dataSetIds)
+                            .eq(FileDetailEntity::getProcessingStatus, FileProcessingStatusEnum.COMPLETED.getCode()))
+                    .stream().map(FileDetailEntity::getId).collect(Collectors.toSet());
+            if (readyFileIds.isEmpty()) {
+                return Collections.emptyList();
+            }
             // 创建嵌入模型实例
             OpenAiEmbeddingModel embeddingModel = embeddingModelFactory.createEmbeddingModel(embeddingConfig);
 
@@ -149,7 +156,7 @@ public class EmbeddingDomainService implements MetadataConstant {
             }
 
             // 转换为VectorStoreResult格式
-            List<VectorStoreResult> results = embeddingMatches.stream().limit(finalMaxResults).map(match -> {
+            List<VectorStoreResult> results = embeddingMatches.stream().map(match -> {
                 VectorStoreResult result = new VectorStoreResult();
                 result.setEmbeddingId(match.embeddingId());
                 result.setText(match.embedded().text());
@@ -157,7 +164,7 @@ public class EmbeddingDomainService implements MetadataConstant {
                 result.setScore(match.score());
                 result.setSearchType(SearchType.VECTOR);
                 return result;
-            }).toList();
+            }).filter(result -> readyFileIds.contains(result.getFileId())).limit(finalMaxResults).toList();
 
             long totalTime = System.currentTimeMillis() - startTime;
             log.info("向量搜索完成，查询：'{}'，返回{}个文档，耗时{}ms", question, results.size(), totalTime);

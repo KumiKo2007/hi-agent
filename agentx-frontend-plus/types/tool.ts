@@ -19,6 +19,8 @@ export interface Tool {
   current_version?: string // 当前版本号
   mcpServerName?: string // MCP服务器名称，用于预设参数
   isGlobal?: boolean // 是否为全局工具
+  transportType?: McpTransportType
+  transportMigrationState?: McpTransportMigrationState
   createdAt: string
   updatedAt: string
 }
@@ -41,7 +43,12 @@ export interface ToolVersion {
   createdAt: string
   updatedAt: string
   author: string // 作者名称（前端展示用）
+  transportType?: McpTransportType
+  transportMigrationState?: McpTransportMigrationState
 }
+
+export type McpTransportType = "STREAMABLE_HTTP" | "LEGACY_SSE"
+export type McpTransportMigrationState = "CURRENT" | "MIGRATION_REQUIRED"
 
 export interface ToolItem {
   name: string
@@ -55,6 +62,16 @@ export interface ToolItem {
     properties: Record<string, { description: string | null } | any>
     required: string[]
   }
+}
+
+export interface McpToolAction {
+  serviceId: string
+  serverName: string
+  name: string
+  description: string
+  parameters: Record<string, unknown>
+  classification: 'READ_ONLY' | 'WRITE_REQUIRES_APPROVAL'
+  explicitlyClassified: boolean
 }
 
 export type PluginInstallConfig = SsePluginConfig | StdioPluginConfig;
@@ -129,6 +146,9 @@ export interface ToolVersionDTO {
   userName: string
   versions: ToolVersionDTO[]
   office: boolean
+  mcpServerName?: string
+  transportType?: McpTransportType
+  transportMigrationState?: McpTransportMigrationState
 }
 
 // 用户安装工具请求参数
@@ -141,4 +161,4 @@ export interface PublishToolToMarketParams {
   toolId: string;
   version: string;
   changeLog: string;
-} 
+}

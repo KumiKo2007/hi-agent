@@ -1,8 +1,47 @@
 import { httpClient } from "@/lib/http-client"
 import { API_ENDPOINTS, API_CONFIG } from "@/lib/api-config"
 import { toast } from "@/hooks/use-toast"
-import { Tool, ToolVersion, ApiResponse, GetMarketToolsParams, PublishToolToMarketParams } from "@/types/tool"
+import { Tool, ToolVersion, ApiResponse, GetMarketToolsParams, PublishToolToMarketParams, McpToolAction } from "@/types/tool"
 import { withToast } from "./toast-utils"
+
+/** 已安装的 MCP 服务和其中的工具动作分别读取。 */
+export async function getMcpServiceActions(serviceId: string): Promise<ApiResponse<McpToolAction[]>> {
+  return httpClient.get(`/tools/services/${encodeURIComponent(serviceId)}/actions`)
+}
+
+/** Agent 创建者逐动作配置允许列表。 */
+export async function getAgentToolActions(agentId: string, serviceId: string): Promise<ApiResponse<string[]>> {
+  return httpClient.get(`/agents/${encodeURIComponent(agentId)}/tool-services/${encodeURIComponent(serviceId)}/actions`)
+}
+
+export async function replaceAgentToolActions(
+  agentId: string,
+  serviceId: string,
+  actionNames: string[]
+): Promise<ApiResponse<string[]>> {
+  return httpClient.put(
+    `/agents/${encodeURIComponent(agentId)}/tool-services/${encodeURIComponent(serviceId)}/actions`,
+    { actionNames }
+  )
+}
+
+/** Creator preauthorizations apply only to explicitly classified, selected write actions. */
+export async function getAgentActionPreauthorizations(agentId: string, serviceId: string): Promise<ApiResponse<string[]>> {
+  return httpClient.get(
+    `/agents/${encodeURIComponent(agentId)}/tool-services/${encodeURIComponent(serviceId)}/preauthorizations`
+  )
+}
+
+export async function replaceAgentActionPreauthorizations(
+  agentId: string,
+  serviceId: string,
+  actionNames: string[]
+): Promise<ApiResponse<string[]>> {
+  return httpClient.put(
+    `/agents/${encodeURIComponent(agentId)}/tool-services/${encodeURIComponent(serviceId)}/preauthorizations`,
+    { actionNames }
+  )
+}
 
 // 获取工具市场列表
 export async function getMarketTools(params?: GetMarketToolsParams): Promise<ApiResponse<any>> {

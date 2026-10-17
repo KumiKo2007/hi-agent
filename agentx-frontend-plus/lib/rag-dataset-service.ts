@@ -13,6 +13,9 @@ import type {
   ApiResponse,
   ProcessFileRequest,
   FileProcessProgressDTO,
+  KnowledgeReadiness,
+  ReadyKnowledgeVersion,
+  ReadyKnowledgePreview,
   RagSearchRequest,
   DocumentUnitDTO,
 } from "@/types/rag-dataset"
@@ -322,6 +325,18 @@ export async function getDatasetFilesProgress(datasetId: string): Promise<ApiRes
       timestamp: Date.now(),
     }
   }
+}
+
+export async function getKnowledgeReadiness(datasetId: string): Promise<ApiResponse<KnowledgeReadiness>> {
+  return httpClient.get<ApiResponse<KnowledgeReadiness>>(API_ENDPOINTS.RAG_DATASET_READINESS(datasetId))
+}
+
+export async function createReadyKnowledgeVersion(datasetId: string): Promise<ApiResponse<ReadyKnowledgeVersion>> {
+  return httpClient.post<ApiResponse<ReadyKnowledgeVersion>>(API_ENDPOINTS.RAG_READY_VERSIONS(datasetId))
+}
+
+export async function getReadyKnowledgeVersion(datasetId: string, versionId: string): Promise<ApiResponse<ReadyKnowledgePreview>> {
+  return httpClient.get<ApiResponse<ReadyKnowledgePreview>>(API_ENDPOINTS.RAG_READY_VERSION_DETAIL(datasetId, versionId))
 }
 
 // RAG搜索文档

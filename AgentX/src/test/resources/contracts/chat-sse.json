@@ -1,0 +1,4 @@
+[
+  { "content": "这是一条确定性回复", "done": false, "messageType": "TEXT" },
+  { "content": "", "done": true, "messageType": "TEXT" }
+]

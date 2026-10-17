@@ -1,0 +1,73 @@
+name: Conversation regression baseline
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+      - name: Test existing chat HTTP/SSE flow with deterministic model
+        working-directory: AgentX
+        run: ./mvnw -B -ntp -Dtest=PortalChatRegressionTest,PortalAgentRunControllerTest,KnowledgeReadinessTest,KnowledgeReadinessHttpTest -DforkedProcessTimeoutInSeconds=60 test
+      - name: Run versioned Agent run evaluation corpus
+        working-directory: AgentX
+        run: ./mvnw -B -ntp -Dtest=VersionedRunEvaluationTest -DforkedProcessTimeoutInSeconds=60 test
+      - name: Verify approval, ownership, repository authorization, and duplicate delivery
+        working-directory: AgentX
+        run: ./mvnw -B -ntp -Dtest=RunApprovalHttpTest,RunDeliveryTest,RunWorkerApprovedActionIdempotencyTest,RunVersionPinningTest,GitHubRunTargetRepositoryAuthorizationTest,GitHubConnectionApprovalAuthorizationTest,AgentToolActionApprovalPolicyTest -DforkedProcessTimeoutInSeconds=60 test
+      - name: Upload evaluation report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: run-evaluation-${{ github.run_id }}-${{ github.run_attempt }}
+          path: AgentX/target/evaluations/run-evaluation-v1.json
+          if-no-files-found: ignore
+          retention-days: 30
+
+  frontend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: agentx-frontend-plus
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: agentx-frontend-plus/package-lock.json
+      - run: npm ci --legacy-peer-deps --include=optional
+      - run: npm run test:chat
+      - run: npm run test:runs
+      - run: npm run test:knowledge
+      - run: npm run lint
+      - run: npm run build
+
+  browser-e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: agentx-frontend-plus
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: agentx-frontend-plus/package-lock.json
+      - run: npm ci --legacy-peer-deps --include=optional
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e

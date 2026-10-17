@@ -1,13 +1,15 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Button } from "@/components/ui/button";
 import { Code, Github, ExternalLink, Calendar, User, Settings, Globe, Building, List, Wrench } from "lucide-react";
-import { Tool, ToolStatus, getToolStatusText, getToolStatusColor } from "@/lib/admin-tool-service";
+import { Tool, ToolStatus, getToolStatusText, getToolStatusColor, getAdminMcpActions, classifyAdminMcpAction } from "@/lib/admin-tool-service";
+import type { McpToolAction } from "@/types/tool";
 
 interface ToolDetailsDialogProps {
   open: boolean;
@@ -16,6 +18,40 @@ interface ToolDetailsDialogProps {
 }
 
 export function ToolDetailsDialog({ open, onOpenChange, tool }: ToolDetailsDialogProps) {
+  const [actions, setActions] = useState<McpToolAction[]>([]);
+  const [saving, setSaving] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const serviceId = tool?.id;
+
+  useEffect(() => {
+    if (!open || !serviceId) return;
+    let active = true;
+    void getAdminMcpActions(serviceId).then(response => {
+      if (active) setActions(response.code === 200 ? response.data : []);
+    }).catch(() => {
+      if (active) setActions([]);
+    });
+    return () => { active = false; };
+  }, [open, serviceId]);
+
+  const classify = async (action: McpToolAction, classification: McpToolAction['classification']) => {
+    if (!tool) return;
+    setSaving(action.name);
+    setError(null);
+    try {
+      const response = await classifyAdminMcpAction(tool.id, action.name, classification);
+      if (response.code === 200) {
+        setActions(previous => previous.map(item => item.name === action.name ? response.data : item));
+      } else {
+        setError(response.message || '分类保存失败');
+      }
+    } catch {
+      setError('无法确认 MCP 服务的动作结构，请检查连接后重试');
+    } finally {
+      setSaving(null);
+    }
+  };
+
   if (!tool) return null;
 
   return (
@@ -150,6 +186,29 @@ export function ToolDetailsDialog({ open, onOpenChange, tool }: ToolDetailsDialo
               </div>
             </>
           )}
+
+          <Separator />
+          <div className="space-y-3">
+            <h4 className="text-sm font-medium">MCP 服务：{tool.mcpServerName || tool.name}</h4>
+            <p className="text-xs text-muted-foreground">动作分类由平台审定；未分类动作按需审批的写入处理。</p>
+            {actions.map(action => (
+              <div key={action.name} className="flex flex-wrap items-center justify-between gap-2 rounded-md border p-3">
+                <div className="min-w-0">
+                  <div className="font-medium break-all">{action.name}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {action.classification === 'READ_ONLY' ? '只读动作' : '外部写入 · 需审批'}
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="outline" disabled={saving !== null}
+                    onClick={() => void classify(action, 'READ_ONLY')}>标记只读</Button>
+                  <Button size="sm" variant="outline" disabled={saving !== null}
+                    onClick={() => void classify(action, 'WRITE_REQUIRES_APPROVAL')}>要求审批</Button>
+                </div>
+              </div>
+            ))}
+            {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
+          </div>
 
           {/* 工具列表 */}
           {tool.toolList && tool.toolList.length > 0 && (

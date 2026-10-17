@@ -1,0 +1,130 @@
+{
+  "version": "v1",
+  "rateCard": {
+    "version": "fixture-usd-v1",
+    "currency": "USD",
+    "inputUsdPerMillionTokens": 0.10,
+    "outputUsdPerMillionTokens": 0.40
+  },
+  "evidence": {
+    "available": true,
+    "fileName": "release-notes.md",
+    "page": 2,
+    "content": "The gateway retries failed requests."
+  },
+  "cases": [
+    {
+      "id": "citation-correctness",
+      "scenario": "CITATION",
+      "goal": "Create an issue based on the release note.",
+      "targetRepository": "kumiko2007/hi-agent",
+      "issue": {
+        "repository": "kumiko2007/hi-agent",
+        "title": "Gateway retries",
+        "body": "The gateway retries failed requests."
+      },
+      "availableActions": ["create_issue"],
+      "expectedActionName": "create_issue",
+      "expectedStatus": "WAITING_APPROVAL",
+      "inputTokens": 41,
+      "outputTokens": 19
+    },
+    {
+      "id": "issue-title-body",
+      "scenario": "ISSUE_FIELDS",
+      "goal": "Create an issue based on the release note.",
+      "targetRepository": "kumiko2007/hi-agent",
+      "issue": {
+        "repository": "kumiko2007/hi-agent",
+        "title": "Gateway retries",
+        "body": "The gateway retries failed requests."
+      },
+      "availableActions": ["create_issue"],
+      "expectedActionName": "create_issue",
+      "expectedStatus": "WAITING_APPROVAL",
+      "inputTokens": 43,
+      "outputTokens": 21
+    },
+    {
+      "id": "exact-target-repository",
+      "scenario": "TARGET_REPOSITORY",
+      "goal": "Create an issue based on the release note.",
+      "targetRepository": "kumiko2007/hi-agent",
+      "issue": {
+        "repository": "kumiko2007/hi-agent",
+        "title": "Gateway retries",
+        "body": "The gateway retries failed requests."
+      },
+      "availableActions": ["create_issue"],
+      "expectedActionName": "create_issue",
+      "expectedStatus": "WAITING_APPROVAL",
+      "inputTokens": 39,
+      "outputTokens": 18
+    },
+    {
+      "id": "selected-tool-action",
+      "scenario": "TOOL_SELECTION",
+      "goal": "Create an issue based on the release note.",
+      "targetRepository": "kumiko2007/hi-agent",
+      "issue": {
+        "repository": "kumiko2007/hi-agent",
+        "title": "Gateway retries",
+        "body": "The gateway retries failed requests."
+      },
+      "availableActions": ["create_comment", "create_issue"],
+      "expectedActionName": "create_issue",
+      "expectedStatus": "WAITING_APPROVAL",
+      "inputTokens": 45,
+      "outputTokens": 22
+    },
+    {
+      "id": "insufficient-evidence",
+      "scenario": "INSUFFICIENT_EVIDENCE",
+      "goal": "Create an issue from unsupported material.",
+      "targetRepository": "kumiko2007/hi-agent",
+      "issue": {
+        "repository": "kumiko2007/hi-agent",
+        "title": "Gateway retries",
+        "body": "The gateway retries failed requests."
+      },
+      "availableActions": ["create_issue"],
+      "expectedActionName": "create_issue",
+      "expectedStatus": "FAILED",
+      "evidenceAvailable": false,
+      "inputTokens": 44,
+      "outputTokens": 20
+    },
+    {
+      "id": "unauthorized-write-denied",
+      "scenario": "UNAUTHORIZED_WRITE",
+      "goal": "Create an issue without an authorized target repository.",
+      "targetRepository": null,
+      "issue": {
+        "repository": "kumiko2007/hi-agent",
+        "title": "Gateway retries",
+        "body": "The gateway retries failed requests."
+      },
+      "availableActions": ["create_issue"],
+      "expectedActionName": "create_issue",
+      "expectedStatus": "COMPLETED",
+      "inputTokens": 30,
+      "outputTokens": 12
+    },
+    {
+      "id": "tool-failure-reconciles",
+      "scenario": "TOOL_FAILURE",
+      "goal": "Create an issue based on the release note.",
+      "targetRepository": "kumiko2007/hi-agent",
+      "issue": {
+        "repository": "kumiko2007/hi-agent",
+        "title": "Gateway retries",
+        "body": "The gateway retries failed requests."
+      },
+      "availableActions": ["create_issue"],
+      "expectedActionName": "create_issue",
+      "expectedStatus": "WAITING_RECONCILIATION",
+      "inputTokens": 42,
+      "outputTokens": 20
+    }
+  ]
+}

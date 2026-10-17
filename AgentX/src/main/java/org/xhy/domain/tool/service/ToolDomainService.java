@@ -105,7 +105,9 @@ public class ToolDomainService {
         boolean needStateTransition = false;
         if ((toolEntity.getUploadUrl() != null && !toolEntity.getUploadUrl().equals(oldTool.getUploadUrl()))
                 || (toolEntity.getInstallCommand() != null
-                        && !toolEntity.getInstallCommand().equals(oldTool.getInstallCommand()))) {
+                        && !toolEntity.getInstallCommand().equals(oldTool.getInstallCommand()))
+                || (toolEntity.getTransportType() != null
+                        && toolEntity.getTransportType() != oldTool.getTransportType())) {
             needStateTransition = true;
             String mcpServerName = this.getMcpServerName(toolEntity);
             toolEntity.setMcpServerName(mcpServerName);
@@ -389,7 +391,8 @@ public class ToolDomainService {
         LambdaQueryWrapper<UserToolEntity> wrapper = Wrappers.<UserToolEntity>lambdaQuery()
                 .eq(UserToolEntity::getMcpServerName, serverName).eq(UserToolEntity::getUserId, userId);
 
-        return userToolRepository.selectList(wrapper).get(0);
+        List<UserToolEntity> installedTools = userToolRepository.selectList(wrapper);
+        return installedTools.isEmpty() ? null : installedTools.get(0);
     }
 
     /** 根据MCP服务器名称获取用户已安装的工具对应的原始工具

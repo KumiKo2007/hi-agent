@@ -6,6 +6,7 @@ import org.xhy.application.tool.dto.ToolVersionDTO;
 import org.xhy.application.tool.dto.ToolWithUserDTO;
 import org.xhy.domain.tool.constant.ToolStatus;
 import org.xhy.domain.tool.constant.ToolType;
+import org.xhy.domain.tool.constant.McpTransportType;
 import org.xhy.domain.tool.model.ToolEntity;
 import org.xhy.domain.tool.model.ToolVersionEntity;
 import org.xhy.domain.tool.model.UserToolEntity;
@@ -44,12 +45,14 @@ public class ToolAssembler {
         ToolDTO toolDTO = new ToolDTO();
         BeanUtils.copyProperties(entity, toolDTO);
         toolDTO.setInstallCommand(JsonUtils.toJsonString(entity.getInstallCommand()));
+        toolDTO.setTransportMigrationState(migrationState(entity.getTransportType()));
         return toolDTO;
     }
 
     public static ToolVersionDTO toDTO(ToolVersionEntity entity) {
         ToolVersionDTO toolVersionDTO = new ToolVersionDTO();
         BeanUtils.copyProperties(entity, toolVersionDTO);
+        toolVersionDTO.setTransportMigrationState(migrationState(entity.getTransportType()));
         return toolVersionDTO;
     }
 
@@ -74,7 +77,12 @@ public class ToolAssembler {
     public static ToolVersionDTO toDTO(UserToolEntity userToolEntity) {
         ToolVersionDTO toolVersionDTO = new ToolVersionDTO();
         BeanUtils.copyProperties(userToolEntity, toolVersionDTO);
+        toolVersionDTO.setTransportMigrationState(migrationState(userToolEntity.getTransportType()));
         return toolVersionDTO;
+    }
+
+    private static String migrationState(McpTransportType transportType) {
+        return (transportType == null ? McpTransportType.LEGACY_SSE : transportType).migrationState();
     }
 
     /** 将工具实体转换为包含用户信息的DTO

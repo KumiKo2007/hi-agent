@@ -70,6 +70,7 @@ logging:
   level:
     root: info
     org.xhy: debug
+    io.modelcontextprotocol.client.transport: off
   file:
     name: logs/agent-x.log
 mail:
