@@ -23,7 +23,7 @@ class ContainerAppServiceIntegrationTest {
     private static final String TEST_USER_ID = "60ab0f71c11d3e7b79dff00639b77e36";
 
     @Test
-    void test2() throws InterruptedException {
+    void should_returnReviewContainerConnection() {
         try {
             System.out.println("开始获取审核容器连接信息...");
             ReviewContainerService.ReviewContainerConnection reviewContainerConnection = reviewContainerService
@@ -35,14 +35,12 @@ class ContainerAppServiceIntegrationTest {
             System.out.println("- 端口: " + reviewContainerConnection.getPort());
             System.out.println("- 基础URL: " + reviewContainerConnection.getBaseUrl());
             System.out.println(reviewContainerConnection);
+            assertNotNull(reviewContainerConnection.getContainerId(), "审核容器ID不应为null");
+            assertNotNull(reviewContainerConnection.getBaseUrl(), "审核容器地址不应为null");
         } catch (Exception e) {
             System.err.println("获取审核容器连接信息失败: " + e.getMessage());
             e.printStackTrace();
             throw e;
-        }
-        // 需要加上 while，不然容器会自动关闭，这里只是为了测试使用
-        while (true) {
-            Thread.sleep(1000l);
         }
     }
 
@@ -73,13 +71,6 @@ class ContainerAppServiceIntegrationTest {
         System.out.println("- 外部端口: " + result.getExternalPort());
         System.out.println("- 卷路径: " + result.getVolumePath());
         System.out.println("- 状态: " + result.getStatus());
-        while (true) {
-            try {
-                Thread.sleep(1000L);
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
-            }
-        }
     }
 
     /** 测试检查用户容器健康状态 - 使用真实数据 */

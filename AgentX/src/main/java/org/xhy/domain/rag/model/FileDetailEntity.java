@@ -115,6 +115,9 @@ public class FileDetailEntity extends BaseEntity implements Serializable {
      * @see org.xhy.domain.rag.constant.FileProcessingStatusEnum */
     private Integer processingStatus;
 
+    /** 处理失败时向使用者展示的安全原因。 */
+    private String processingError;
+
     /** 当前OCR处理页数 */
     private Integer currentOcrPageNumber;
 
@@ -376,6 +379,14 @@ public class FileDetailEntity extends BaseEntity implements Serializable {
 
     public void setProcessingStatus(Integer processingStatus) {
         this.processingStatus = processingStatus;
+    }
+
+    public String getProcessingError() {
+        return processingError;
+    }
+
+    public void setProcessingError(String processingError) {
+        this.processingError = processingError;
     }
 
     public Integer getCurrentOcrPageNumber() {

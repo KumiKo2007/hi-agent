@@ -5,6 +5,8 @@ import jakarta.validation.constraints.NotNull;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.xhy.application.admin.tool.service.AdminToolAppService;
+import org.xhy.application.tool.dto.McpToolActionDTO;
+import org.xhy.application.tool.service.ToolActionPolicyAppService;
 import org.xhy.application.tool.dto.ToolWithUserDTO;
 import org.xhy.application.tool.dto.ToolStatisticsDTO;
 import org.xhy.domain.tool.constant.ToolStatus;
@@ -12,6 +14,7 @@ import org.xhy.infrastructure.auth.UserContext;
 import org.xhy.interfaces.api.common.Result;
 import org.xhy.interfaces.dto.tool.request.CreateToolRequest;
 import org.xhy.interfaces.dto.tool.request.QueryToolRequest;
+import org.xhy.interfaces.dto.tool.request.ClassifyToolActionRequest;
 
 import java.util.List;
 
@@ -21,9 +24,25 @@ import java.util.List;
 public class AdminToolController {
 
     private final AdminToolAppService adminToolAppService;
+    private final ToolActionPolicyAppService toolActionPolicyAppService;
 
-    public AdminToolController(AdminToolAppService adminToolAppService) {
+    public AdminToolController(AdminToolAppService adminToolAppService,
+            ToolActionPolicyAppService toolActionPolicyAppService) {
         this.adminToolAppService = adminToolAppService;
+        this.toolActionPolicyAppService = toolActionPolicyAppService;
+    }
+
+    /** 查看一个 MCP 服务及其具体动作的安全分类。 */
+    @GetMapping("/{toolId}/actions")
+    public Result<List<McpToolActionDTO>> getActions(@PathVariable String toolId) {
+        return Result.success(toolActionPolicyAppService.listForReview(toolId));
+    }
+
+    /** 平台管理员审定工具动作分类与固定参数结构。 */
+    @PutMapping("/{toolId}/actions/{actionName}/classification")
+    public Result<McpToolActionDTO> classifyAction(@PathVariable String toolId, @PathVariable String actionName,
+            @RequestBody @Validated ClassifyToolActionRequest request) {
+        return Result.success(toolActionPolicyAppService.classify(toolId, actionName, request.getClassification()));
     }
 
     /** 分页获取工具列表

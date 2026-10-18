@@ -36,6 +36,7 @@ public class ToolStateStateMachineAppService {
 
     private final ToolDomainService toolDomainService;
     private final MCPGatewayService mcpGatewayService;
+    private final McpTransportClientFactory mcpClients;
     private final GitHubService gitHubService;
     private final ReviewContainerService reviewContainerService;
 
@@ -43,9 +44,11 @@ public class ToolStateStateMachineAppService {
     private final ExecutorService executorService;
 
     public ToolStateStateMachineAppService(ToolDomainService toolDomainService, MCPGatewayService mcpGatewayService,
-            GitHubService gitHubService, ReviewContainerService reviewContainerService) {
+            McpTransportClientFactory mcpClients, GitHubService gitHubService,
+            ReviewContainerService reviewContainerService) {
         this.toolDomainService = toolDomainService;
         this.mcpGatewayService = mcpGatewayService;
+        this.mcpClients = mcpClients;
         this.gitHubService = gitHubService;
         this.reviewContainerService = reviewContainerService;
 
@@ -67,7 +70,7 @@ public class ToolStateStateMachineAppService {
         registerAppProcessor(new AppWaitingReviewProcessor());
         registerAppProcessor(new AppGithubUrlValidateProcessor(gitHubService));
         registerAppProcessor(new AppDeployingProcessor(mcpGatewayService, reviewContainerService));
-        registerAppProcessor(new AppFetchingToolsProcessor(mcpGatewayService, reviewContainerService));
+        registerAppProcessor(new AppFetchingToolsProcessor(mcpGatewayService, reviewContainerService, mcpClients));
         registerAppProcessor(new AppManualReviewProcessor());
         registerAppProcessor(new AppPublishingProcessor(gitHubService));
 

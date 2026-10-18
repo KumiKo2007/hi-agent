@@ -138,6 +138,7 @@ export interface FileProcessProgressDTO {
   processingStatusEnum: FileProcessingStatusEnum; // 处理状态枚举
   processingStatus: number; // 处理状态码
   processingStatusDescription: string; // 处理状态描述
+  failureReason?: string | null; // 处理失败原因
   // 分项进度字段
   currentOcrPageNumber?: number; // 当前OCR处理页数
   currentEmbeddingPageNumber?: number; // 当前向量化处理页数
@@ -152,6 +153,33 @@ export interface FileProcessProgressDTO {
   embeddingStatus?: string; // 向量化状态描述
   currentPageNumber?: number; // 当前处理页数
   processProgress?: number; // 处理进度百分比
+}
+
+export interface KnowledgeReadiness {
+  datasetId: string;
+  status: "EMPTY" | "PROCESSING" | "FAILED" | "READY";
+  fileCount: number;
+  readyFileCount: number;
+  failedFileCount: number;
+  failureReason: string | null;
+  latestReadyVersionId: string | null;
+  latestReadyVersionNumber: string | null;
+}
+
+export interface ReadyKnowledgeVersion {
+  id: string;
+  version: string;
+  searchReady: boolean;
+  fileCount: number;
+  documentCount: number;
+}
+
+export interface ReadyKnowledgePreview {
+  id: string;
+  version: string;
+  files: Array<{ id: string; fileName: string }>;
+  sampleDocuments: Array<{ id: string; fileName: string; page: number; content: string }>;
+  totalDocuments: number;
 }
 
 // RAG搜索请求（对应 RagSearchRequest）

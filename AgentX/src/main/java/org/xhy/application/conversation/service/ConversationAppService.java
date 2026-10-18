@@ -152,7 +152,7 @@ public class ConversationAppService {
         SseEmitter emitter = handler.chat(environment, transport);
 
         // 5. 注册会话到会话管理器（支持中断功能）
-        chatSessionManager.registerSession(chatRequest.getSessionId(), emitter);
+        chatSessionManager.registerSession(chatRequest.getSessionId(), userId, emitter);
 
         return emitter;
     }
@@ -178,7 +178,7 @@ public class ConversationAppService {
         SseEmitter emitter = handler.chat(environment, transport);
 
         // 5. 注册会话到会话管理器（支持中断功能）
-        chatSessionManager.registerSession(chatRequest.getSessionId(), emitter);
+        chatSessionManager.registerSession(chatRequest.getSessionId(), userId, emitter);
 
         return emitter;
     }
@@ -264,6 +264,8 @@ public class ConversationAppService {
         if (!agent.getUserId().equals(userId)) {
             AgentVersionEntity latestAgentVersion = agentDomainService.getLatestAgentVersion(agentId);
             BeanUtils.copyProperties(latestAgentVersion, agent);
+            // 版本内容可以替换配置，但动作允许列表始终归属原 Agent。
+            agent.setId(agentId);
         }
 
         return agent;

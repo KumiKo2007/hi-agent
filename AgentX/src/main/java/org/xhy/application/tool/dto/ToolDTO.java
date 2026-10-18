@@ -3,6 +3,7 @@ package org.xhy.application.tool.dto;
 import org.xhy.domain.tool.constant.ToolStatus;
 import org.xhy.domain.tool.constant.ToolType;
 import org.xhy.domain.tool.constant.UploadType;
+import org.xhy.domain.tool.constant.McpTransportType;
 import org.xhy.domain.tool.model.config.ToolDefinition;
 
 import java.time.LocalDateTime;
@@ -33,6 +34,8 @@ public class ToolDTO {
     private ToolStatus failedStepStatus;
     private String mcpServerName;
     private Boolean isGlobal;
+    private McpTransportType transportType;
+    private String transportMigrationState;
 
     // 构造方法
     public ToolDTO() {
@@ -229,5 +232,21 @@ public class ToolDTO {
 
     public void setIsGlobal(Boolean isGlobal) {
         this.isGlobal = isGlobal;
+    }
+
+    public McpTransportType getTransportType() {
+        return transportType;
+    }
+
+    public void setTransportType(McpTransportType transportType) {
+        this.transportType = transportType;
+    }
+
+    public String getTransportMigrationState() {
+        return transportMigrationState;
+    }
+
+    public void setTransportMigrationState(String transportMigrationState) {
+        this.transportMigrationState = transportMigrationState;
     }
 }

@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import { Sidebar } from "@/components/sidebar"
 import { ChatPanel } from "@/components/chat-panel"
+import { RunPanel } from "@/components/run-panel"
 import { EmptyState } from "@/components/empty-state"
 import { ConversationList } from "@/components/conversation-list"
 import { useWorkspace } from "@/contexts/workspace-context"
@@ -45,6 +46,7 @@ export default function WorkspacePage() {
   const [sessions, setSessions] = useState<SessionDTO[]>([])
   const [loadingAgents, setLoadingAgents] = useState(true)
   const [loadingSessions, setLoadingSessions] = useState(false)
+  const [activeView, setActiveView] = useState<"chat" | "runs">("chat")
   const [agentToDelete, setAgentToDelete] = useState<Agent | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
   
@@ -295,13 +297,22 @@ export default function WorkspacePage() {
         ) : (
           <div className="flex-1 flex w-full h-full">
             <div className="flex-1 flex flex-col">
-              <ChatPanel 
-                conversationId={selectedConversationId}
-                isFunctionalAgent={isFunctionalAgent}
-                agentName={currentAgent?.name || "AI助手"}
-                onToggleScheduledTaskPanel={() => setShowScheduledTaskPanel(!showScheduledTaskPanel)}
-                multiModal={multiModal}
-              />
+              <div className="flex gap-2 border-b px-4 py-2">
+                <Button variant={activeView === "chat" ? "secondary" : "ghost"} size="sm"
+                  onClick={() => setActiveView("chat")}>对话</Button>
+                <Button variant={activeView === "runs" ? "secondary" : "ghost"} size="sm"
+                  onClick={() => setActiveView("runs")}>运行</Button>
+              </div>
+              {activeView === "chat" ? (
+                <ChatPanel
+                  conversationId={selectedConversationId}
+                  isFunctionalAgent={isFunctionalAgent}
+                  agentName={currentAgent?.name || "AI助手"}
+                  onToggleScheduledTaskPanel={() => setShowScheduledTaskPanel(!showScheduledTaskPanel)}
+                  multiModal={multiModal}
+                />
+              ) : <RunPanel sessionId={selectedConversationId} agentName={currentAgent?.name}
+                knowledgeBaseIds={currentAgent?.knowledgeBaseIds || []} />}
             </div>
             {showScheduledTaskPanel && isFunctionalAgent && (
               <ScheduledTaskPanel 

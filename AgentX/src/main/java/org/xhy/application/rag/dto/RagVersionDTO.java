@@ -51,6 +51,9 @@ public class RagVersionDTO {
     /** 文档单元数量 */
     private Integer documentCount;
 
+    /** 能否作为运行的可检索知识版本。 */
+    private Boolean searchReady;
+
     /** 发布状态：1:审核中, 2:已发布, 3:拒绝, 4:已下架 */
     private Integer publishStatus;
 
@@ -188,6 +191,14 @@ public class RagVersionDTO {
 
     public void setDocumentCount(Integer documentCount) {
         this.documentCount = documentCount;
+    }
+
+    public Boolean getSearchReady() {
+        return searchReady;
+    }
+
+    public void setSearchReady(Boolean searchReady) {
+        this.searchReady = searchReady;
     }
 
     public Integer getPublishStatus() {

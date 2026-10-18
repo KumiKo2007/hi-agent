@@ -1,6 +1,7 @@
 package org.xhy.application.tool.dto;
 
 import org.xhy.domain.tool.model.config.ToolDefinition;
+import org.xhy.domain.tool.constant.McpTransportType;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -48,6 +49,10 @@ public class ToolVersionDTO {
     private Long installCount;
 
     private String mcpServerName;
+
+    private McpTransportType transportType;
+
+    private String transportMigrationState;
 
     private Boolean isDelete;
 
@@ -229,5 +234,21 @@ public class ToolVersionDTO {
 
     public void setMcpServerName(String mcpServerName) {
         this.mcpServerName = mcpServerName;
+    }
+
+    public McpTransportType getTransportType() {
+        return transportType;
+    }
+
+    public void setTransportType(McpTransportType transportType) {
+        this.transportType = transportType;
+    }
+
+    public String getTransportMigrationState() {
+        return transportMigrationState;
+    }
+
+    public void setTransportMigrationState(String transportMigrationState) {
+        this.transportMigrationState = transportMigrationState;
     }
 }

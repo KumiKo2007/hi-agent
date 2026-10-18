@@ -7,6 +7,7 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import org.xhy.domain.tool.constant.ToolStatus;
 import org.xhy.domain.tool.constant.ToolType;
 import org.xhy.domain.tool.constant.UploadType;
+import org.xhy.domain.tool.constant.McpTransportType;
 import org.xhy.domain.tool.model.config.ToolDefinition;
 import org.xhy.infrastructure.converter.ListStringConverter;
 import org.xhy.infrastructure.converter.MapConverter;
@@ -89,6 +90,10 @@ public class ToolEntity extends BaseEntity {
 
     @TableField("mcp_server_name")
     private String mcpServerName;
+
+    /** MCP HTTP transport; new services use Streamable HTTP. */
+    @TableField("transport_type")
+    private McpTransportType transportType = McpTransportType.STREAMABLE_HTTP;
 
     /** 是否为全局工具 */
     @TableField("is_global")
@@ -236,6 +241,14 @@ public class ToolEntity extends BaseEntity {
 
     public void setMcpServerName(String mcpServerName) {
         this.mcpServerName = mcpServerName;
+    }
+
+    public McpTransportType getTransportType() {
+        return transportType;
+    }
+
+    public void setTransportType(McpTransportType transportType) {
+        this.transportType = transportType;
     }
 
     public Boolean getIsGlobal() {

@@ -22,6 +22,9 @@ public class FileProcessProgressDTO {
     /** 处理状态描述（中文） */
     private String processingStatusDescription;
 
+    /** 失败原因；非失败状态为空。 */
+    private String failureReason;
+
     /** 当前OCR处理页数 */
     private Integer currentOcrPageNumber;
 
@@ -101,6 +104,14 @@ public class FileProcessProgressDTO {
 
     public void setProcessingStatusDescription(String processingStatusDescription) {
         this.processingStatusDescription = processingStatusDescription;
+    }
+
+    public String getFailureReason() {
+        return failureReason;
+    }
+
+    public void setFailureReason(String failureReason) {
+        this.failureReason = failureReason;
     }
 
     public Integer getCurrentOcrPageNumber() {

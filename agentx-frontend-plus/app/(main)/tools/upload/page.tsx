@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/form"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { toast } from "@/hooks/use-toast"
 import { z } from "zod"
@@ -36,6 +37,7 @@ const formSchema = z.object({
   uploadUrl: z.string().url("请输入有效的URL"),
   labels: z.array(z.string()).min(1, "请输入至少一个标签").max(5, "最多5个标签"),
   installCommand: z.string().min(1, "请输入安装命令"),
+  transportType: z.enum(["STREAMABLE_HTTP", "LEGACY_SSE"]),
   icon: z.string().optional() // 改为字符串URL类型
 });
 
@@ -61,7 +63,8 @@ export default function UploadToolPage() {
       description: "",
       uploadUrl: "",
       labels: [],
-      installCommand: ""
+      installCommand: "",
+      transportType: "STREAMABLE_HTTP"
     }
   });
 
@@ -139,6 +142,7 @@ export default function UploadToolPage() {
         uploadUrl: values.uploadUrl,
         labels: values.labels,
         installCommand: installCommandObj,
+        transportType: values.transportType,
         icon: values.icon, // 现在直接使用表单中的icon URL
       };
       const response = await uploadToolWithToast(payload);
@@ -409,6 +413,31 @@ export default function UploadToolPage() {
                       )}
                     />
 
+                    <FormField
+                      control={form.control}
+                      name="transportType"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>MCP 传输方式</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl>
+                              <SelectTrigger aria-label="MCP 传输方式">
+                                <SelectValue placeholder="选择传输方式" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="STREAMABLE_HTTP">Streamable HTTP（推荐）</SelectItem>
+                              <SelectItem value="LEGACY_SSE">Legacy SSE（迁移兼容）</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormDescription>
+                            新服务默认使用 Streamable HTTP；仅在服务尚未支持时选择 Legacy SSE。
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
                     {/* 工具图标上传 */}
                     <FormField
                       control={form.control}
@@ -644,4 +673,4 @@ export default function UploadToolPage() {
       </Form>
     </div>
   )
-} 
+}

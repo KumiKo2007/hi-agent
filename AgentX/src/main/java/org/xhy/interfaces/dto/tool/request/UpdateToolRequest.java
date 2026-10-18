@@ -6,6 +6,7 @@ import jakarta.validation.constraints.NotNull;
 
 import java.util.List;
 import java.util.Map;
+import org.xhy.domain.tool.constant.McpTransportType;
 
 /** 创建工具的请求对象 */
 public class UpdateToolRequest {
@@ -40,6 +41,9 @@ public class UpdateToolRequest {
 
     /** 是否为全局工具 */
     private Boolean isGlobal;
+
+    /** Optional transport update; omitted updates keep the currently installed transport. */
+    private McpTransportType transportType;
 
     // 构造方法
     public UpdateToolRequest() {
@@ -108,5 +112,13 @@ public class UpdateToolRequest {
 
     public void setIsGlobal(Boolean isGlobal) {
         this.isGlobal = isGlobal;
+    }
+
+    public McpTransportType getTransportType() {
+        return transportType;
+    }
+
+    public void setTransportType(McpTransportType transportType) {
+        this.transportType = transportType;
     }
 }

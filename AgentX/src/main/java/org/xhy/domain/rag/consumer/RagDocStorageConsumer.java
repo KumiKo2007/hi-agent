@@ -63,6 +63,8 @@ public class RagDocStorageConsumer {
         MessageProperties messageProperties = message.getMessageProperties();
         long deliveryTag = messageProperties.getDeliveryTag();
 
+        String failedFileId = null;
+        String failedUserId = null;
         try {
             // 将已由 Jackson 转换的 Map 转为强类型 Envelope
             MessageEnvelope<RagDocSyncStorageMessage> envelope = OBJECT_MAPPER.convertValue(payload,
@@ -71,6 +73,8 @@ public class RagDocStorageConsumer {
 
             MDC.put(TRACE_ID, Objects.nonNull(envelope.getTraceId()) ? envelope.getTraceId() : IdWorker.getTimeId());
             RagDocSyncStorageMessage mqRecordReqDTO = envelope.getData();
+            failedFileId = mqRecordReqDTO.getFileId();
+            failedUserId = mqRecordReqDTO.getUserId();
 
             log.info("当前文件 {} 页面 {} ———— 开始向量化", mqRecordReqDTO.getFileName(), mqRecordReqDTO.getPage());
 
@@ -83,6 +87,13 @@ public class RagDocStorageConsumer {
             log.info("当前文件 {} 第{}页 ———— 向量化完成", mqRecordReqDTO.getFileName(), mqRecordReqDTO.getPage());
         } catch (Exception e) {
             log.error("向量化过程中发生异常", e);
+            if (failedFileId != null && failedUserId != null) {
+                try {
+                    fileDetailDomainService.failFileEmbeddingProcessing(failedFileId, failedUserId);
+                } catch (Exception statusError) {
+                    log.error("记录文件向量化失败状态失败，文件ID: {}", failedFileId, statusError);
+                }
+            }
         } finally {
             channel.basicAck(deliveryTag, false);
         }

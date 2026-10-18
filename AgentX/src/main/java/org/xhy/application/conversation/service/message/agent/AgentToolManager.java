@@ -1,74 +1,67 @@
 package org.xhy.application.conversation.service.message.agent;
 
-import dev.langchain4j.mcp.McpToolProvider;
-import dev.langchain4j.mcp.client.DefaultMcpClient;
-import dev.langchain4j.mcp.client.McpClient;
-import dev.langchain4j.mcp.client.transport.McpTransport;
-import dev.langchain4j.mcp.client.transport.PresetParameter;
-import dev.langchain4j.mcp.client.transport.http.HttpMcpTransport;
-import dev.langchain4j.service.tool.ToolProvider;
-import org.springframework.stereotype.Component;
-import org.xhy.application.conversation.service.handler.context.ChatContext;
-import org.xhy.application.conversation.service.McpUrlProviderService;
-import org.xhy.infrastructure.utils.JsonUtils;
-
-import java.time.Duration;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
-/** Agent工具管理器 负责创建和管理工具提供者 */
+import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.mcp.client.McpClient;
+import dev.langchain4j.service.tool.ToolExecutor;
+import dev.langchain4j.service.tool.ToolProvider;
+import dev.langchain4j.service.tool.ToolProviderResult;
+import org.springframework.stereotype.Component;
+import org.xhy.application.conversation.service.handler.context.ChatContext;
+import org.xhy.application.tool.model.RegisteredToolAction;
+import org.xhy.application.tool.service.McpClientFactory;
+import org.xhy.application.tool.service.McpSchema;
+import org.xhy.application.tool.service.ToolActionCatalog;
+import org.xhy.application.tool.service.ToolBroker;
+import org.xhy.domain.tool.constant.ToolActionClassification;
+import org.xhy.infrastructure.exception.BusinessException;
+
+/** 将旧聊天可见的 MCP 动作限制为平台审定的只读动作。 */
 @Component
 public class AgentToolManager {
+    private final ToolActionCatalog catalog;
+    private final ToolBroker broker;
+    private final McpClientFactory clients;
 
-    private final McpUrlProviderService mcpUrlProviderService;
-
-    public AgentToolManager(McpUrlProviderService mcpUrlProviderService) {
-        this.mcpUrlProviderService = mcpUrlProviderService;
+    public AgentToolManager(ToolActionCatalog catalog, ToolBroker broker, McpClientFactory clients) {
+        this.catalog = catalog;
+        this.broker = broker;
+        this.clients = clients;
     }
 
-    /** 创建工具提供者（支持全局/用户隔离工具自动识别）
-     *
-     * @param mcpServerNames 工具服务名列表
-     * @param toolPresetParams 工具预设参数
-     * @param userId 用户ID（关键参数：用于用户隔离工具）
-     * @return 工具提供者实例，如果工具列表为空则返回null */
-    public ToolProvider createToolProvider(List<String> mcpServerNames,
-            Map<String, Map<String, Map<String, String>>> toolPresetParams, String userId) {
-        if (mcpServerNames == null || mcpServerNames.isEmpty()) {
+    /** 只公开已选 MCP 服务中的只读动作；每次执行仍由 Broker 重新校验。 */
+    public ToolProvider createToolProvider(ChatContext context) {
+        if (context == null || context.getAgent() == null || context.getAgent().getToolIds().isEmpty()) {
             return null;
         }
-
-        List<McpClient> mcpClients = new ArrayList<>();
-
-        for (String mcpServerName : mcpServerNames) {
-            String sseUrl = mcpUrlProviderService.getMcpToolUrl(mcpServerName, userId);
-            McpTransport transport = new HttpMcpTransport.Builder().sseUrl(sseUrl).logRequests(true).logResponses(true)
-                    .timeout(Duration.ofHours(1)).build();
-
-            McpClient mcpClient = new DefaultMcpClient.Builder().transport(transport).build();
-
-            /** 预先设置参数 */
-            if (toolPresetParams != null && toolPresetParams.containsKey(mcpServerName)) {
-                List<PresetParameter> presetParameters = new ArrayList<>();
-                for (String key : toolPresetParams.keySet()) {
-
-                    toolPresetParams.get(key).forEach((k, v) -> {
-                        presetParameters.add(new PresetParameter(k, JsonUtils.toJsonString(v)));
-                    });
+        return request -> {
+            Map<ToolSpecification, ToolExecutor> tools = new LinkedHashMap<>();
+            for (RegisteredToolAction action : catalog.list(context.getAgent(), context.getUserId())) {
+                if (action.classification() != ToolActionClassification.READ_ONLY || action.schema() == null) {
+                    continue;
                 }
-                mcpClient.presetParameters(presetParameters);
+                ToolSpecification live;
+                try (McpClient client = clients.open(action.serverName(), context.getUserId())) {
+                    live = client.listTools().stream().filter(spec -> action.name().equals(spec.name())).findFirst()
+                            .orElseThrow(() -> new BusinessException("MCP 服务未提供已登记的工具动作"));
+                    if (!action.schema().equals(McpSchema.fromRuntime(live.parameters()))) {
+                        throw new BusinessException("MCP 工具动作结构已变化，执行已暂停");
+                    }
+                } catch (BusinessException exception) {
+                    throw exception;
+                } catch (Exception exception) {
+                    throw new BusinessException("MCP 工具动作目录读取失败");
+                }
+                String alias = action.serverName() + "__" + action.name();
+                String description = action.description() == null ? "已登记的只读工具动作" : action.description();
+                ToolSpecification safeSpec = ToolSpecification.builder().name(alias).description(description)
+                        .parameters(live.parameters()).build();
+                tools.put(safeSpec, (toolRequest, memoryId) -> broker.executeReadOnly(context.getAgent(),
+                        context.getUserId(), action.serviceId(), action.name(), toolRequest.arguments()));
             }
-            mcpClients.add(mcpClient);
-        }
-
-        return McpToolProvider.builder().mcpClients(mcpClients).build();
-    }
-
-    /** 获取可用的工具列表
-     *
-     * @return 工具URL列表 */
-    public List<String> getAvailableTools(ChatContext chatContext) {
-        return chatContext.getMcpServerNames();
+            return new ToolProviderResult(tools);
+        };
     }
 }

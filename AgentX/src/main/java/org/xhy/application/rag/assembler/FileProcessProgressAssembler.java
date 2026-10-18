@@ -33,6 +33,13 @@ public class FileProcessProgressAssembler {
             dto.setProcessingStatusEnum(statusEnum);
             dto.setProcessingStatus(processingStatus);
             dto.setProcessingStatusDescription(statusEnum.getDescription());
+            if (statusEnum.isFailed()) {
+                dto.setFailureReason(entity.getProcessingError() != null
+                        ? entity.getProcessingError()
+                        : statusEnum == FileProcessingStatusEnum.OCR_FAILED
+                                ? "文档识别失败，请检查文件内容后重试"
+                                : "向量化失败，请检查嵌入模型配置后重试");
+            }
         }
 
         // 设置分离的页数和进度

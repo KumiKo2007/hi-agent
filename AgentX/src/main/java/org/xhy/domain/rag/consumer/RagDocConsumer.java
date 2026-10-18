@@ -162,6 +162,7 @@ public class RagDocConsumer {
 
             if (documentUnits.isEmpty()) {
                 log.warn("未找到用于向量化的文档单元，文件ID: {}", fileId);
+                fileDetailDomainService.failFileEmbeddingStart(fileId, fileEntity.getUserId());
                 return;
             }
 

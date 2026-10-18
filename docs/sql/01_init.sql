@@ -358,7 +358,8 @@ create table public.file_detail (
                                     current_embedding_page_number integer default 0, -- 当前向量化处理页数
                                     ocr_process_progress numeric(5,2) default 0.00, -- OCR处理进度百分比
                                     embedding_process_progress numeric(5,2) default 0.00, -- 向量化处理进度百分比(0-100)
-                                    processing_status integer default 0 -- 文件处理状态：0-已上传，1-OCR处理中，2-OCR完成，3-向量化处理中，4-处理完成，5-OCR失败，6-向量化失败
+                                    processing_status integer default 0, -- 文件处理状态：0-已上传，1-OCR处理中，2-OCR完成，3-向量化处理中，4-处理完成，5-OCR失败，6-向量化失败
+                                    processing_error character varying(500) -- 可展示给使用者的处理失败原因
 );
 create index idx_file_detail_current_page on file_detail using btree (current_page_number);
 create index idx_file_detail_progress on file_detail using btree (process_progress);
@@ -400,6 +401,7 @@ comment on column public.file_detail.current_embedding_page_number is '当前向
 comment on column public.file_detail.ocr_process_progress is 'OCR处理进度百分比';
 comment on column public.file_detail.embedding_process_progress is '向量化处理进度百分比(0-100)';
 comment on column public.file_detail.processing_status is '文件处理状态：0-已上传，1-OCR处理中，2-OCR完成，3-向量化处理中，4-处理完成，5-OCR失败，6-向量化失败';
+comment on column public.file_detail.processing_error is '可展示给使用者的文件处理失败原因';
 
 create table public.messages (
                                  id character varying(36) primary key not null, -- 消息唯一ID
@@ -623,6 +625,7 @@ create table public.rag_versions (
                                      file_count integer default 0, -- 文件数量
                                      total_size bigint default 0, -- 总大小（字节）
                                      document_count integer default 0, -- 文档单元数量
+                                     search_ready boolean not null default false, -- 已通过全部文件就绪检查的可检索版本
                                      publish_status integer default 1, -- 发布状态 1:审核中, 2:已发布, 3:拒绝, 4:已下架
                                      reject_reason text, -- 审核拒绝原因
                                      review_time timestamp without time zone, -- 审核时间
@@ -645,6 +648,7 @@ comment on column public.rag_versions.original_rag_name is '原始RAG名称（�
 comment on column public.rag_versions.file_count is '文件数量';
 comment on column public.rag_versions.total_size is '总大小（字节）';
 comment on column public.rag_versions.document_count is '文档单元数量';
+comment on column public.rag_versions.search_ready is '通过全部文件就绪检查创建的不可变可检索版本';
 comment on column public.rag_versions.publish_status is '发布状态 1:审核中, 2:已发布, 3:拒绝, 4:已下架';
 comment on column public.rag_versions.reject_reason is '审核拒绝原因';
 comment on column public.rag_versions.review_time is '审核时间';
@@ -1189,4 +1193,132 @@ CREATE TABLE IF NOT EXISTS public.memory_items (
     created_at timestamp without time zone default CURRENT_TIMESTAMP, -- 创建时间
     updated_at timestamp without time zone default CURRENT_TIMESTAMP, -- 更新时间
     deleted_at timestamp without time zone -- 删除时间（软删除）
-    )
+    );
+
+
+-- 每个目标独立的持久运行及步骤，供运行接口与控制台读取。
+CREATE TABLE IF NOT EXISTS public.agent_runs (
+    id VARCHAR(36) PRIMARY KEY,
+    user_id VARCHAR(64) NOT NULL,
+    session_id VARCHAR(64) NOT NULL,
+    agent_id VARCHAR(64) NOT NULL,
+    agent_version_id VARCHAR(36),
+    agent_version_number VARCHAR(20),
+    model_id VARCHAR(36),
+    model_connection_type VARCHAR(32),
+    approval_policy VARCHAR(64) NOT NULL DEFAULT 'CREATOR_DEFAULT',
+    knowledge_version_id VARCHAR(64),
+    target_repository VARCHAR(200),
+    goal TEXT NOT NULL,
+    status VARCHAR(32) NOT NULL,
+    result TEXT,
+    error_message TEXT,
+    lease_token VARCHAR(36),
+    lease_until TIMESTAMP,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_agent_runs_owner_session_time
+    ON public.agent_runs (user_id, session_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_agent_runs_knowledge_version
+    ON public.agent_runs (knowledge_version_id);
+
+CREATE INDEX IF NOT EXISTS idx_agent_runs_recovery
+    ON public.agent_runs (status, lease_until, created_at)
+    WHERE deleted_at IS NULL;
+
+COMMENT ON COLUMN public.agent_runs.agent_version_id IS '运行创建时固定的已发布 Agent 版本 ID';
+COMMENT ON COLUMN public.agent_runs.agent_version_number IS '运行创建时固定的 Agent 版本号';
+COMMENT ON COLUMN public.agent_runs.model_id IS '运行创建时固定的模型连接 ID';
+COMMENT ON COLUMN public.agent_runs.model_connection_type IS '运行创建时固定的模型连接协议类型';
+
+CREATE TABLE IF NOT EXISTS public.agent_run_steps (
+    id VARCHAR(36) PRIMARY KEY,
+    run_id VARCHAR(36) NOT NULL,
+    sequence_no INTEGER NOT NULL,
+    kind VARCHAR(64) NOT NULL,
+    status VARCHAR(32) NOT NULL,
+    result TEXT,
+    error_message TEXT,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP,
+    UNIQUE (run_id, sequence_no)
+);
+CREATE INDEX IF NOT EXISTS idx_agent_run_steps_run_sequence
+    ON public.agent_run_steps (run_id, sequence_no);
+
+CREATE TABLE IF NOT EXISTS public.agent_run_approvals (
+    id VARCHAR(36) PRIMARY KEY,
+    run_id VARCHAR(36) NOT NULL UNIQUE,
+    service_id VARCHAR(64) NOT NULL,
+    action_name VARCHAR(255) NOT NULL,
+    action_description TEXT,
+    target_repository VARCHAR(255) NOT NULL,
+    arguments_json TEXT NOT NULL,
+    schema_json TEXT NOT NULL,
+    status VARCHAR(32) NOT NULL,
+    approval_source VARCHAR(32) NOT NULL DEFAULT 'USER',
+    decided_by VARCHAR(64),
+    decided_at TIMESTAMP,
+    external_resource_id TEXT,
+    reconciliation_state VARCHAR(32) NOT NULL DEFAULT 'NONE',
+    reconciliation_outcome VARCHAR(32),
+    reconciliation_reason TEXT,
+    reconciliation_evidence TEXT,
+    reconciliation_evidence_reference VARCHAR(512),
+    reconciliation_actor_id VARCHAR(64),
+    reconciliation_at TIMESTAMP,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_agent_run_approvals_run_status
+    ON public.agent_run_approvals (run_id, status);
+
+CREATE TABLE IF NOT EXISTS public.agent_run_reconciliations (
+    id VARCHAR(36) PRIMARY KEY,
+    run_id VARCHAR(36) NOT NULL,
+    approval_id VARCHAR(36) NOT NULL,
+    outcome VARCHAR(32) NOT NULL,
+    actor_id VARCHAR(64),
+    evidence TEXT NOT NULL,
+    evidence_reference VARCHAR(512),
+    external_resource_id TEXT,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_agent_run_reconciliations_approval_created
+    ON public.agent_run_reconciliations (approval_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS public.agent_run_timeline_events (
+    id VARCHAR(36) PRIMARY KEY,
+    event_order BIGINT GENERATED ALWAYS AS IDENTITY UNIQUE NOT NULL,
+    run_id VARCHAR(36) NOT NULL,
+    step_id VARCHAR(36),
+    event_type VARCHAR(48) NOT NULL,
+    event_status VARCHAR(48) NOT NULL,
+    safe_summary VARCHAR(512) NOT NULL,
+    details_json TEXT NOT NULL DEFAULT '{}',
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_agent_run_timeline_events_run_order
+    ON public.agent_run_timeline_events (run_id, event_order)
+    WHERE deleted_at IS NULL;
+COMMENT ON TABLE public.agent_run_timeline_events IS
+    'Append-only allowlisted owner timeline metadata; excludes prompts, credentials, raw tool arguments and outputs';
+
+-- 使用者自己的 GitHub 连接。凭据密文由环境密钥保护，仓库范围由平台再次收紧。
+CREATE TABLE IF NOT EXISTS public.github_connections (
+    user_id VARCHAR(64) PRIMARY KEY,
+    github_user_id VARCHAR(64) NOT NULL,
+    github_login VARCHAR(255) NOT NULL,
+    encrypted_token TEXT NOT NULL,
+    repositories_json TEXT NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);

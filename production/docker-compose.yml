@@ -97,6 +97,7 @@ services:
       
       # 安全配置
       JWT_SECRET: ${JWT_SECRET:-please_change_this_in_production}
+      HI_AGENT_GITHUB_TOKEN_KEY: ${HI_AGENT_GITHUB_TOKEN_KEY:-}
       
       # 日志配置
       LOG_LEVEL_ROOT: warn

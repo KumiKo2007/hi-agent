@@ -1,9 +1,5 @@
 package org.xhy.infrastructure.mcp_gateway;
 
-import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.mcp.client.DefaultMcpClient;
-import dev.langchain4j.mcp.client.McpClient;
-import dev.langchain4j.mcp.client.transport.http.HttpMcpTransport;
 import org.apache.http.HttpEntity;
 import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.methods.CloseableHttpResponse;
@@ -15,8 +11,7 @@ import org.apache.http.util.EntityUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-import org.xhy.domain.tool.model.config.ToolDefinition;
-import org.xhy.domain.tool.model.config.ToolSpecificationConverter;
+import org.xhy.domain.tool.constant.McpTransportType;
 import org.xhy.infrastructure.config.MCPGatewayProperties;
 import org.xhy.infrastructure.exception.BusinessException;
 
@@ -24,8 +19,6 @@ import jakarta.annotation.PostConstruct;
 import org.xhy.infrastructure.utils.JsonUtils;
 
 import java.io.IOException;
-import java.time.Duration;
-import java.util.List;
 import java.util.Map;
 
 /** MCP Gateway服务 处理与MCP网关的所有API交互 */
@@ -64,8 +57,15 @@ public class MCPGatewayService {
      * @param containerPort 容器端口
      * @return 用户容器SSE URL */
     public String buildUserContainerUrl(String mcpServerName, String containerIp, Integer containerPort) {
+        return buildUserContainerUrl(mcpServerName, containerIp, containerPort, McpTransportType.LEGACY_SSE);
+    }
+
+    /** Builds a user-container endpoint using the configured MCP transport. */
+    public String buildUserContainerUrl(String mcpServerName, String containerIp, Integer containerPort,
+            McpTransportType transportType) {
         String containerBaseUrl = "http://" + containerIp + ":" + containerPort;
-        return containerBaseUrl + "/" + mcpServerName + "/sse?api_key=" + properties.getApiKey();
+        return containerBaseUrl + "/" + mcpServerName + endpointPath(transportType) + "?api_key="
+                + properties.getApiKey();
     }
 
     /** 构建全局工具SSE URL（纯技术方法）
@@ -73,7 +73,25 @@ public class MCPGatewayService {
      * @param mcpServerName 工具服务名称
      * @return 全局工具SSE URL */
     public String buildGlobalSSEUrl(String mcpServerName) {
-        return properties.getBaseUrl() + "/" + mcpServerName + "/sse?api_key=" + properties.getApiKey();
+        return buildGlobalUrl(mcpServerName, McpTransportType.LEGACY_SSE);
+    }
+
+    /** Builds an endpoint for an installed tool that uses a selected MCP transport. */
+    public String buildGlobalUrl(String mcpServerName, McpTransportType transportType) {
+        return properties.getBaseUrl() + "/" + mcpServerName + endpointPath(transportType) + "?api_key="
+                + properties.getApiKey();
+    }
+
+    /** Builds the review-container endpoint. Legacy gateway listing retains its historical nested SSE route. */
+    public String buildReviewContainerUrl(String mcpServerName, String containerIp, Integer containerPort,
+            McpTransportType transportType) {
+        String containerBaseUrl = "http://" + containerIp + ":" + containerPort;
+        String route = transportType == McpTransportType.STREAMABLE_HTTP ? "/mcp" : "/sse/sse";
+        return containerBaseUrl + "/" + mcpServerName + route + "?api_key=" + properties.getApiKey();
+    }
+
+    private String endpointPath(McpTransportType transportType) {
+        return transportType == McpTransportType.STREAMABLE_HTTP ? "/mcp" : "/sse";
     }
 
     /** 部署工具到MCP Gateway
@@ -124,59 +142,6 @@ public class MCPGatewayService {
             }
         } catch (IOException e) {
             throw new BusinessException("调用部署API失败: " + e.getMessage(), e);
-        }
-    }
-
-    /** 从MCP Gateway获取工具列表
-     *
-     * @param toolName 可选，特定工具名称
-     * @return 工具定义列表
-     * @throws BusinessException 如果API调用失败 */
-    public List<ToolDefinition> listTools(String toolName) throws Exception {
-        String url = properties.getBaseUrl() + "/" + toolName + "/sse/sse?api_key=" + properties.getApiKey();
-        HttpMcpTransport transport = new HttpMcpTransport.Builder().sseUrl(url).timeout(Duration.ofSeconds(10))
-                .logRequests(false).logResponses(true).build();
-        McpClient client = new DefaultMcpClient.Builder().transport(transport).build();
-        try {
-            List<ToolSpecification> toolSpecifications = client.listTools();
-            return ToolSpecificationConverter.convert(toolSpecifications);
-        } catch (Exception e) {
-            logger.error("调用MCP Gateway API失败", e);
-            throw new BusinessException("调用MCP Gateway API失败: " + e.getMessage(), e);
-        } finally {
-            client.close();
-        }
-    }
-
-    /** 从审核容器获取工具列表
-     *
-     * @param toolName 工具名称
-     * @param containerIp 审核容器IP地址
-     * @param containerPort 审核容器端口
-     * @return 工具定义列表
-     * @throws BusinessException 如果API调用失败 */
-    public List<ToolDefinition> listToolsFromReviewContainer(String toolName, String containerIp, Integer containerPort)
-            throws Exception {
-        String url = "http://" + containerIp + ":" + containerPort + "/" + toolName + "/sse/sse?api_key="
-                + properties.getApiKey();
-
-        logger.info("从审核容器获取工具列表: {}", url);
-
-        HttpMcpTransport transport = new HttpMcpTransport.Builder().sseUrl(url).timeout(Duration.ofSeconds(10))
-                .logRequests(false).logResponses(true).build();
-        McpClient client = new DefaultMcpClient.Builder().transport(transport).build();
-        try {
-            List<ToolSpecification> toolSpecifications = client.listTools();
-            List<ToolDefinition> result = ToolSpecificationConverter.convert(toolSpecifications);
-
-            logger.info("成功从审核容器获取到工具列表，共 {} 个工具定义", result != null ? result.size() : 0);
-            return result;
-
-        } catch (Exception e) {
-            logger.error("从审核容器调用MCP Gateway API失败: {}:{}", containerIp, containerPort, e);
-            throw new BusinessException("从审核容器调用MCP Gateway API失败: " + e.getMessage(), e);
-        } finally {
-            client.close();
         }
     }
 
