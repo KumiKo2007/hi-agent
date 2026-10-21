@@ -1374,3 +1374,12 @@ ALTER TABLE tool_versions
 ALTER TABLE user_tools
     ADD COLUMN transport_type VARCHAR(32) NOT NULL DEFAULT 'LEGACY_SSE',
     ADD CONSTRAINT user_tools_transport_type_check CHECK (transport_type IN ('STREAMABLE_HTTP', 'LEGACY_SSE'));
+
+-- 教师保存的固定选材，内容及来源范围不随知识库更新。
+CREATE TABLE teaching_selections (
+    id VARCHAR(36) PRIMARY KEY,
+    user_id VARCHAR(64) NOT NULL,
+    selection_json JSONB NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX idx_teaching_selections_owner ON teaching_selections(user_id, created_at DESC);
