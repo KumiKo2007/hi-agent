@@ -178,7 +178,7 @@ export interface ReadyKnowledgePreview {
   id: string;
   version: string;
   files: Array<{ id: string; fileName: string }>;
-  sampleDocuments: Array<{ id: string; fileName: string; page: number; content: string }>;
+  sampleDocuments: Array<{ id: string; fileName: string; ragVersionFileId: string; page: number; content: string }>;
   totalDocuments: number;
 }
 

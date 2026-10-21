@@ -23,6 +23,7 @@ import { getUserInfoWithToast, type UserInfo } from "@/lib/user-service"
 import { BrandMark } from "@/components/brand-mark"
 
 const navItems = [
+  { name: "教学准备", href: "/teaching", icon: FileText },
   { name: "代码审查", href: "/reviews", icon: GitPullRequest },
   {
     name: "工作区",
