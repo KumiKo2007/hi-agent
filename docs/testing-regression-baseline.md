@@ -27,4 +27,22 @@ PR 中的 `Conversation regression baseline` 工作流运行同样的命令，�
 
 前端还有既存 TypeScript 错误，当前 `next.config.mjs` 在构建时跳过类型和 lint 检查。`npm run build` 成功不代表类型检查通过；可用 `npx tsc --noEmit` 查看类型错误。后续工单应清理这些错误，再移除构建配置中的跳过项。
 
-现有 `@SpringBootTest` 集成测试依赖 PostgreSQL、RabbitMQ、Docker 等外部服务。本次已移除容器集成测试中的永久等待循环，但这些测试仍需真实外部服务。本工作流只运行上述可独立复现的聊天回归测试；外部集成测试尚不能作为无服务的 PR 检查运行。
+现有 `@SpringBootTest` 集成测试依赖 PostgreSQL、RabbitMQ、Docker 等外部服务。本次已移除容器集成测试中的永久等待循环，但这些测试仍需真实外部服务。工作流中的 `backend` 运行 HTTP/SSE、审批、所有者权限、知识版本固定和重复派发的确定性回归；这些测试中存在内存存储与外部替身，不能据此声称真实部署闭环通过。独立 `run-persistence` job 使用专用 PostgreSQL 和 RabbitMQ 验证恢复及重复派发，不复用部署中的数据库、队列或凭据。
+
+
+## Run 持久化与浏览器证据
+
+`run-persistence` job 显式设置 `RUN_DELIVERY_INTEGRATION=true`，因此启用真实数据库和队列测试；没有此变量时，该测试会被 JUnit 跳过。测试的所有者 HTTP 行为、租约过期恢复、工作者重建及重复派发经过真实 PostgreSQL/RabbitMQ，但 Session 和模型仍是确定性替身，不涵盖真实 GitHub 写入。测试报告单独作为 CI artifact 保存。
+
+在专用、可丢弃的 PostgreSQL 数据库及 RabbitMQ 实例就绪后，可在 `AgentX` 运行：
+
+```bash
+RUN_DELIVERY_INTEGRATION=true \
+RUN_TEST_DB_URL=jdbc:postgresql://localhost:55432/agentx_test \
+RUN_TEST_RABBIT_PORT=55672 \
+./mvnw -B -ntp -Dtest=RunPostgresRabbitIntegrationTest,RunMigrationSequenceTest -DforkedProcessTimeoutInSeconds=60 test
+```
+
+数据库测试会创建运行相关表，RabbitMQ 测试会清空专用运行队列；只能指向隔离的测试实例。默认数据库账号/密码为测试夹具中的 `postgres`，RabbitMQ 为 `guest`。
+
+浏览器 job 保留现有全流程断言和重试规则；失败时上传 `test-results`，其中包括 Playwright trace 和页面错误上下文，方便区分页面行为失败与启动环境失败。此流程替换所有平台 HTTP 请求，只证明浏览器路径；真实模型、教材及 GitHub 的人工验收仍按本地验收指南执行。
