@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { Bot, Database, FileText, LogOut, Menu, Settings } from "lucide-react"
+import { Bot, Database, FileText, GitPullRequest, LogOut, Menu, Settings } from "lucide-react"
 import { toast } from "@/hooks/use-toast"
 
 import { cn } from "@/lib/utils"
@@ -23,6 +23,7 @@ import { getUserInfoWithToast, type UserInfo } from "@/lib/user-service"
 import { BrandMark } from "@/components/brand-mark"
 
 const navItems = [
+  { name: "代码审查", href: "/reviews", icon: GitPullRequest },
   {
     name: "工作区",
     href: "/workspace",
