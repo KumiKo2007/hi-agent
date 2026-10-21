@@ -60,3 +60,5 @@ RUN_TEST_RABBIT_PORT=55672 \
 原样预热流程在等待数据请求、文件上传和标签切换处均发生过超时。检查 Next 的 `.next/trace` 后，`webpack-invalidated-client` 的 `trigger` 连续指向 Playwright 在前端 `test-results` 中写入的 trace 和 screencast 文件：取证写入触发 HMR，再次渲染又产生取证帧，形成反馈循环。修复仅把 Playwright `outputDir` 移到前端目录之外的仓库根 `.playwright-results`，并同步 CI artifact 路径；保留 trace、所有页面断言及既有超时。
 
 修复后同一份 E2E（测试文件未改动）在已有开发进程上 **7.6 秒通过**；再以 `CI=true` 让 Playwright 自行启动和关闭 Next，流程 **18.8 秒通过**、总命令 27.1 秒。未使用重试才通过，未修改 30 秒测试门槛、5 秒断言门槛或 120 秒启动门槛。`npm run lint` 同时通过既有基线，没有新增诊断。这些结果仍是平台 HTTP 替身支持的浏览器验收，不等于真实模型和 GitHub 写入验收。
+
+合并教学选材集成分支后，以上确定性后端集合重新运行 **54 项通过、0 跳过**；再次在全新 PostgreSQL 库执行合并后的完整初始化 SQL，工具协议/审批结构和教学选材结构均可读取。沙盒内运行 Mockito 曾因 JDK 自附加被阻止而失败，该环境问题通过使用正常批准的测试权限解决，没有修改 Mockito、跳过测试或放宽检查。
