@@ -1383,3 +1383,12 @@ CREATE TABLE teaching_selections (
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX idx_teaching_selections_owner ON teaching_selections(user_id, created_at DESC);
+
+-- 当前所有者读取的固定 PR 输入；只保存快照，不含个人授权凭据。
+CREATE TABLE pr_input_snapshots (
+    id VARCHAR(36) PRIMARY KEY,
+    user_id VARCHAR(64) NOT NULL,
+    snapshot_json TEXT NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX idx_pr_input_snapshots_owner ON pr_input_snapshots (user_id, created_at);
