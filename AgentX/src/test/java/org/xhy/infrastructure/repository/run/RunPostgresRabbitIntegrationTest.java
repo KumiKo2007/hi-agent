@@ -260,6 +260,12 @@ class RunPostgresRabbitIntegrationTest {
 
     private void createSchema(DataSource dataSource) throws Exception {
         try (Connection connection = dataSource.getConnection()) {
+            // 运行迁移引用既有 Agent 与 MCP 服务身份；专用空库只需这两个主键前置表。
+            // Run 的表、约束及索引仍全部由真实迁移创建，不在夹具中复制。
+            try (var statement = connection.createStatement()) {
+                statement.execute("CREATE TABLE IF NOT EXISTS agents (id VARCHAR(36) PRIMARY KEY)");
+                statement.execute("CREATE TABLE IF NOT EXISTS tools (id VARCHAR(36) PRIMARY KEY)");
+            }
             for (String migration : RUN_MIGRATION_RESOURCES) {
                 ScriptUtils.executeSqlScript(connection, new ClassPathResource("db/migration/" + migration));
             }
