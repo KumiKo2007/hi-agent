@@ -166,3 +166,4 @@ agentx-frontend-plus/test-results/
 agentx-frontend-plus/playwright-report/
 
 .playwright-results/
+.playwright-teaching-results/
