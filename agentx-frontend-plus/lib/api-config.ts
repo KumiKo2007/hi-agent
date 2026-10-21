@@ -18,7 +18,7 @@ function getDefaultApiUrl(): string {
 }
 
 export const API_CONFIG = {
-  BASE_URL: getDefaultApiUrl(),
+  BASE_URL: process.env.NEXT_PUBLIC_API_BASE_URL || getDefaultApiUrl(),
   CURRENT_USER_ID: "1", // 当前用户ID
 }
 
