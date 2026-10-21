@@ -13,6 +13,8 @@ process.env.no_proxy = noProxy
 
 export default defineConfig({
   testDir: "./e2e",
+  // Trace 帧不能写入 Next 开发目录，否则文件监听会不断触发 HMR。
+  outputDir: "../.playwright-results",
   fullyParallel: false,
   retries: process.env.CI ? 1 : 0,
   workers: process.env.CI ? 1 : undefined,

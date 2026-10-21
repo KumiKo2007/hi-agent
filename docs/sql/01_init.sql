@@ -1055,7 +1055,7 @@ INSERT INTO auth_settings (id, feature_type, feature_key, feature_name, enabled,
 
 
 create table public.agent_execution_details (
-                                                id bigint primary key not null default nextval('agent_execution_details_id_seq'::regclass),
+                                                id bigserial primary key not null,
                                                 message_content text, -- 统一的消息内容（用户消息/AI响应/工具调用描述）
                                                 message_type character varying(32) not null, -- 消息类型：USER_MESSAGE, AI_RESPONSE, TOOL_CALL
                                                 model_endpoint character varying(128), -- 此次使用的模型部署名称
@@ -1100,7 +1100,7 @@ comment on column public.agent_execution_details.fallback_from_provider is '降�
 comment on column public.agent_execution_details.fallback_to_provider is '降级后的服务商名称';
 
 create table public.agent_execution_summary (
-                                                id bigint primary key not null default nextval('agent_execution_summary_id_seq'::regclass),
+                                                id bigserial primary key not null,
                                                 user_id character varying(64) not null, -- 用户ID (String类型UUID)
                                                 session_id character varying(64) not null, -- 会话ID，作为追踪的唯一标识
                                                 agent_id character varying(64) not null, -- Agent ID (String类型UUID)
@@ -1322,6 +1322,58 @@ CREATE TABLE IF NOT EXISTS public.github_connections (
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+
+-- 新部署也必须具备首阶段工具动作审批、创建者预授权及 MCP 协议字段。
+
+CREATE TABLE IF NOT EXISTS tool_action_policies (
+    service_id VARCHAR(36) NOT NULL,
+    action_name VARCHAR(255) NOT NULL,
+    classification VARCHAR(32) NOT NULL,
+    schema_json JSONB NOT NULL,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (service_id, action_name),
+    CONSTRAINT fk_tool_action_service FOREIGN KEY (service_id) REFERENCES tools(id) ON DELETE CASCADE,
+    CONSTRAINT chk_tool_action_classification CHECK (classification IN ('READ_ONLY', 'WRITE_REQUIRES_APPROVAL'))
+);
+
+CREATE TABLE IF NOT EXISTS agent_tool_actions (
+    agent_id VARCHAR(36) NOT NULL,
+    service_id VARCHAR(36) NOT NULL,
+    action_name VARCHAR(255) NOT NULL,
+    PRIMARY KEY (agent_id, service_id, action_name),
+    CONSTRAINT fk_agent_tool_action_agent FOREIGN KEY (agent_id) REFERENCES agents(id) ON DELETE CASCADE,
+    CONSTRAINT fk_agent_tool_action_service FOREIGN KEY (service_id) REFERENCES tools(id) ON DELETE CASCADE
+);
+
+ALTER TABLE agent_runs
+    ADD COLUMN IF NOT EXISTS approval_policy VARCHAR(48) NOT NULL DEFAULT 'CREATOR_DEFAULT';
+
+ALTER TABLE agent_run_approvals
+    ADD COLUMN IF NOT EXISTS approval_source VARCHAR(40) NOT NULL DEFAULT 'USER';
+
+CREATE TABLE IF NOT EXISTS agent_tool_action_preauthorizations (
+    agent_id VARCHAR(36) NOT NULL,
+    service_id VARCHAR(36) NOT NULL,
+    action_name VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (agent_id, service_id, action_name),
+    CONSTRAINT fk_agent_action_preauth_selection
+        FOREIGN KEY (agent_id, service_id, action_name)
+        REFERENCES agent_tool_actions (agent_id, service_id, action_name) ON DELETE CASCADE
+);
+
+ALTER TABLE tools
+    ADD COLUMN transport_type VARCHAR(32) NOT NULL DEFAULT 'LEGACY_SSE',
+    ADD CONSTRAINT tools_transport_type_check CHECK (transport_type IN ('STREAMABLE_HTTP', 'LEGACY_SSE'));
+
+ALTER TABLE tool_versions
+    ADD COLUMN transport_type VARCHAR(32) NOT NULL DEFAULT 'LEGACY_SSE',
+    ADD CONSTRAINT tool_versions_transport_type_check CHECK (transport_type IN ('STREAMABLE_HTTP', 'LEGACY_SSE'));
+
+ALTER TABLE user_tools
+    ADD COLUMN transport_type VARCHAR(32) NOT NULL DEFAULT 'LEGACY_SSE',
+    ADD CONSTRAINT user_tools_transport_type_check CHECK (transport_type IN ('STREAMABLE_HTTP', 'LEGACY_SSE'));
 
 -- 教师保存的固定选材，内容及来源范围不随知识库更新。
 CREATE TABLE teaching_selections (
