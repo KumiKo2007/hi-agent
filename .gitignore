@@ -160,3 +160,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Playwright failure evidence (uploaded by CI)
+agentx-frontend-plus/test-results/
+agentx-frontend-plus/playwright-report/
+
+.playwright-results/
+.playwright-teaching-results/
