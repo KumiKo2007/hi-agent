@@ -88,6 +88,70 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+  teaching-pr-http:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: pgvector/pgvector:pg15
+        env:
+          POSTGRES_USER: postgres
+          # 仅限此临时 CI 服务，与测试 fixture 的非生产凭据一致。
+          POSTGRES_PASSWORD: teaching-test
+          POSTGRES_DB: teaching_test
+        ports:
+          - 55425:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d teaching_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+      - name: Verify teaching and PR HTTP behavior through real PostgreSQL
+        working-directory: AgentX
+        env:
+          TEACHING_INTEGRATION: 'true'
+          TEACHING_TEST_URL: jdbc:postgresql://localhost:55425/teaching_test
+          PR_INPUT_POSTGRES_URL: jdbc:postgresql://localhost:55425/teaching_test
+          PR_INPUT_POSTGRES_USER: postgres
+          PR_INPUT_POSTGRES_PASSWORD: teaching-test
+        run: ./mvnw -B -ntp -Dtest=TeachingSelectionHttpTest,TeachingOutlineHttpTest,PrInputHttpTest,PrInputPostgresHttpIntegrationTest -DforkedProcessTimeoutInSeconds=120 test
+      - name: Reject missing, empty or skipped HTTP regression reports
+        working-directory: AgentX
+        run: |
+          python3 - <<'PYTHON'
+          import pathlib
+          import xml.etree.ElementTree as ET
+
+          expected = [
+              "org.xhy.interfaces.api.portal.teaching.TeachingSelectionHttpTest",
+              "org.xhy.interfaces.api.portal.teaching.TeachingOutlineHttpTest",
+              "org.xhy.interfaces.api.portal.review.PrInputHttpTest",
+              "org.xhy.interfaces.api.portal.review.PrInputPostgresHttpIntegrationTest",
+          ]
+          for name in expected:
+              path = pathlib.Path("target/surefire-reports") / f"TEST-{name}.xml"
+              report = ET.parse(path).getroot()
+              counts = {key: int(report.get(key, "0")) for key in ("tests", "failures", "errors", "skipped")}
+              if counts["tests"] <= 0 or any(counts[key] for key in ("failures", "errors", "skipped")):
+                  raise SystemExit(f"HTTP regression evidence invalid: {name}: {counts}")
+              print(f"Verified {name}: {counts}")
+          PYTHON
+      - name: Upload teaching and PR HTTP evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: teaching-pr-http-${{ github.run_id }}-${{ github.run_attempt }}
+          path: AgentX/target/surefire-reports/
+          if-no-files-found: error
+          retention-days: 14
+
   frontend:
     runs-on: ubuntu-latest
     timeout-minutes: 20

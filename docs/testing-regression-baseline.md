@@ -62,3 +62,9 @@ RUN_TEST_RABBIT_PORT=55672 \
 修复后同一份 E2E（测试文件未改动）在已有开发进程上 **7.6 秒通过**；再以 `CI=true` 让 Playwright 自行启动和关闭 Next，流程 **18.8 秒通过**、总命令 27.1 秒。未使用重试才通过，未修改 30 秒测试门槛、5 秒断言门槛或 120 秒启动门槛。`npm run lint` 同时通过既有基线，没有新增诊断。这些结果仍是平台 HTTP 替身支持的浏览器验收，不等于真实模型和 GitHub 写入验收。
 
 合并教学选材集成分支后，以上确定性后端集合重新运行 **54 项通过、0 跳过**；再次在全新 PostgreSQL 库执行合并后的完整初始化 SQL，工具协议/审批结构和教学选材结构均可读取。沙盒内运行 Mockito 曾因 JDK 自附加被阻止而失败，该环境问题通过使用正常批准的测试权限解决，没有修改 Mockito、跳过测试或放宽检查。
+
+## 教学与 PR 输入的真实 PostgreSQL HTTP 回归
+
+`teaching-pr-http` 是独立的 CI job，在临时 pgvector/pg15 中运行 `TeachingSelectionHttpTest`、`TeachingOutlineHttpTest`、`PrInputHttpTest` 与 `PrInputPostgresHttpIntegrationTest`。它显式启用 `TEACHING_INTEGRATION` 与 `PR_INPUT_POSTGRES_URL`，要求四份 JUnit 报告均有测试且没有失败、错误或跳过，防止因环境变量缺失默认 skip 而假绿。
+
+测试对大纲/选材/PR 快照持久化使用真实数据库；模型、GitHub 外部读取使用受控响应。该 job 不替代完整生产身份认证、浏览器、真实课本/模型与真实 PR 的 #36/#41 验收。教学 Word/OCR 等后续 HTTP 测试落地后需要加入相同的执行及证据检查清单。

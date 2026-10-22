@@ -167,3 +167,6 @@ agentx-frontend-plus/playwright-report/
 
 .playwright-results/
 .playwright-teaching-results/
+
+# 教学大纲浏览器取证（保留于本地，不纳入源码）
+.playwright-outline-results/

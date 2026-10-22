@@ -188,6 +188,7 @@ export default function TeachingPage() {
     </div>
     {selection && <Card><CardHeader><CardTitle>固定来源：{selection.title}</CardTitle></CardHeader><CardContent className="space-y-4">
       <p className="break-all text-sm">知识版本 {selection.versionNumber} · {selection.versionId} · 选材 {selection.id}</p>
+      <Link className="inline-block rounded-md border px-4 py-2 text-sm underline" href={`/teaching/outlines?selection=${encodeURIComponent(selection.id)}`}>设置教学参数与模块大纲</Link>
       <p role="status">{selection.status === "READY" ? "所选页均有可定位来源，内容仍需教师核查。" : "来源不完整，请核对缺页或缩小范围后重新保存。"}</p>
       {selection.warnings.length > 0 && <ul className="list-inside list-disc text-destructive">{selection.warnings.map(warning => <li key={warning}>{warning}</li>)}</ul>}
       <ul className="grid gap-2 sm:grid-cols-2">{selection.sources.map(item => <li key={item.id}><Button variant="outline" className="h-auto w-full justify-start whitespace-normal text-left" disabled={busy} onClick={() => openSource(item.id)}>{item.fileName} · {location(item)}</Button></li>)}</ul>
