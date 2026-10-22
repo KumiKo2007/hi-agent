@@ -7,8 +7,15 @@ public record TeachingSelection(String id, String title, String datasetId, Strin
         List<Range> ranges, List<Source> sources, String status, List<String> warnings, String createdAt) {
     public record Range(String fileId, int startPage, int endPage, String chapter) {
     }
-    public record Source(String id, String fileId, String fileName, int physicalPage, String locatorType,
-            String content, String sourceUrl) {
+    public record Source(String id, String fileId, String fileName, Integer physicalPage, String locatorType,
+            String content, String sourceUrl, Integer paragraphIndex, String heading, List<String> coverageWarnings) {
+        public Source(String id, String fileId, String fileName, Integer physicalPage, String locatorType,
+                String content, String sourceUrl) {
+            this(id, fileId, fileName, physicalPage, locatorType, content, sourceUrl, null, null, List.of());
+        }
+        public int rangeIndex() {
+            return paragraphIndex != null ? paragraphIndex : physicalPage == null ? -1 : physicalPage;
+        }
     }
     public record Version(String id, String versionNumber, List<File> files, List<Source> sources) {
     }

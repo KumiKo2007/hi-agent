@@ -17,6 +17,10 @@ public class TeachingSelectionBrowserHarness {
     public static void main(String[] args) throws Exception {
         var fixture = new TeachingSelectionHttpTest();
         fixture.prepare();
+        fixture.jdbc.update(
+                "INSERT INTO rag_version_files(id,rag_version_id,file_name,file_type,file_page_size) VALUES('word-f1','v1','导数备课.docx','docx',3)");
+        fixture.jdbc.update(
+                "INSERT INTO rag_version_documents(id,rag_version_id,rag_version_file_id,page,content,source_locator_type,source_locator,coverage_warnings) VALUES('word-d3','v1','word-f1',2,'割线的斜率趋近于切线的斜率。','WORD_PARAGRAPH','{\"paragraphIndex\":3,\"heading\":\"导数的概念\"}','[\"Word 含公式，公式结构未覆盖，请核查\"]')");
         var server = HttpServer.create(new InetSocketAddress("127.0.0.1", 8088), 0);
         String payload = Base64.getUrlEncoder().withoutPadding()
                 .encodeToString("{\"userId\":\"owner\",\"exp\":2540188800}".getBytes(StandardCharsets.UTF_8));

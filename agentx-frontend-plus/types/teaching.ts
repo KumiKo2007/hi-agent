@@ -8,8 +8,11 @@ export interface TeachingSource {
   id: string
   fileId: string
   fileName: string
-  physicalPage: number
-  locatorType: "FILE_PAGE" | "DOCUMENT_UNIT"
+  physicalPage: number | null
+  locatorType: "FILE_PAGE" | "DOCUMENT_UNIT" | "WORD_PARAGRAPH"
+  paragraphIndex?: number | null
+  heading?: string | null
+  coverageWarnings?: string[]
   content: string
   sourceUrl: string
 }

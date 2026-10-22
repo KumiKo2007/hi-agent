@@ -18,6 +18,7 @@ function value<T>(response: ApiResponse<T>): T {
 }
 
 function location(source: TeachingSource) {
+  if (source.locatorType === "WORD_PARAGRAPH") return `原文第 ${source.paragraphIndex} 段${source.heading ? ` · ${source.heading}` : ""}`
   return source.locatorType === "FILE_PAGE" ? `文件物理第 ${source.physicalPage} 页` : `来源处理单元 ${source.physicalPage}（非物理页）`
 }
 
@@ -95,13 +96,13 @@ export default function TeachingPage() {
 
   async function upload(file?: File) {
     if (!file) return
-    if (file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) { setError("请选择 PDF 文件"); return }
+    if (!/\.(pdf|docx?)$/i.test(file.name)) { setError("请选择 PDF 或 Word（DOC/DOCX）文件"); return }
     const id = datasetId
     setBusy(true); setError("")
     try {
       value(await uploadFile(id, file))
       if (datasetRef.current === id) await loadDataset(id)
-      setNotice("PDF 已上传，请刷新处理状态。处理完成后确认新版本，才能选择新文件。")
+      setNotice("资料已上传，请刷新处理状态。处理完成后确认新版本，才能选择新文件。")
     } catch (e) { setError(e instanceof Error ? e.message : "上传失败") }
     finally { setBusy(false) }
   }
@@ -153,8 +154,8 @@ export default function TeachingPage() {
           <option value="">请选择你的知识库</option>{datasets.map(dataset => <option key={dataset.id} value={dataset.id}>{dataset.name}</option>)}
         </select>
         <div className="flex flex-wrap items-center gap-3"><Button variant="outline" disabled={!datasetId || busy} onClick={() => loadDataset(datasetId)}><RefreshCw className="mr-2 h-4 w-4" aria-hidden />刷新处理状态</Button>
-          <Label className="flex items-center gap-2" htmlFor="teaching-pdf"><Upload className="h-4 w-4" aria-hidden />上传 PDF</Label>
-          <input id="teaching-pdf" aria-label="上传 PDF" className="max-w-full text-sm" type="file" accept=".pdf,application/pdf" disabled={!datasetId || busy} onChange={event => { void upload(event.target.files?.[0]); event.target.value = "" }} /></div>
+          <Label className="flex items-center gap-2" htmlFor="teaching-pdf"><Upload className="h-4 w-4" aria-hidden />上传 PDF 或 Word</Label>
+          <input id="teaching-pdf" aria-label="上传 PDF 或 Word" className="max-w-full text-sm" type="file" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" disabled={!datasetId || busy} onChange={event => { void upload(event.target.files?.[0]); event.target.value = "" }} /></div>
         <Link className="text-sm underline underline-offset-4" href="/knowledge">管理知识库或新建知识库</Link>
         {readiness && <div className="space-y-2 rounded-md border p-3" aria-live="polite">
           <p>实际处理状态：{({ EMPTY: "尚无资料", PROCESSING: "处理中", FAILED: "处理失败", READY: "全部处理完成" })[readiness.status]} · {readiness.readyFileCount}/{readiness.fileCount} 个文件就绪</p>
@@ -166,15 +167,16 @@ export default function TeachingPage() {
       </CardContent></Card>
       {preview && <Card><CardHeader><CardTitle>2. 限定文件与章节范围</CardTitle></CardHeader><CardContent className="space-y-5">
         <div className="space-y-2"><Label htmlFor="selection-title">选材名称</Label><Input id="selection-title" maxLength={120} value={title} onChange={event => setTitle(event.target.value)} /></div>
-        <p className="text-sm text-muted-foreground">页码从 1 开始，指 PDF 文件物理页，不是课本印刷页。章节名用于标记，实际只采用选定文件页范围内的内容。</p>
+        <p className="text-sm text-muted-foreground">页码从 1 开始，指 PDF 文件物理页，不是课本印刷页。Word 按正文原文段落范围选择（包含空段落编号，不是排版页码）。章节名用于标记，实际只采用选定范围内的内容。</p>
         {preview.files.map(file => {
           const range = ranges.find(item => item.fileId === file.id)
           const pdf = file.fileName.toLowerCase().endsWith(".pdf")
+          const word = /\.docx?$/i.test(file.fileName)
           const last = Math.max(1, ...preview.sampleDocuments.filter(doc => doc.ragVersionFileId === file.id).map(doc => doc.page + 1))
           return <fieldset className="space-y-3 rounded-md border p-4" key={file.id}>
-            <legend className="px-1"><label className="flex items-center gap-2"><input type="checkbox" checked={Boolean(range)} onChange={event => setRanges(current => event.target.checked ? [...current, { fileId: file.id, startPage: 1, endPage: last, chapter: "" }] : current.filter(item => item.fileId !== file.id))} />{file.fileName}{!pdf && "（按来源处理单元选择，需核查）"}</label></legend>
-            {range && <div className="grid gap-3 sm:grid-cols-3"><div className="space-y-2"><Label htmlFor={`start-${file.id}`}>{pdf ? "开始物理页" : "开始来源单元"}</Label><Input id={`start-${file.id}`} type="number" min={1} value={range.startPage} onChange={event => changeRange(file.id, { startPage: Number(event.target.value) })} /></div>
-              <div className="space-y-2"><Label htmlFor={`end-${file.id}`}>{pdf ? "结束物理页" : "结束来源单元"}</Label><Input id={`end-${file.id}`} type="number" min={1} value={range.endPage} onChange={event => changeRange(file.id, { endPage: Number(event.target.value) })} /></div>
+            <legend className="px-1"><label className="flex items-center gap-2"><input type="checkbox" checked={Boolean(range)} onChange={event => setRanges(current => event.target.checked ? [...current, { fileId: file.id, startPage: 1, endPage: last, chapter: "" }] : current.filter(item => item.fileId !== file.id))} />{file.fileName}{word ? "（按正文原文段落选择；历史资料需重新处理）" : !pdf && "（按来源处理单元选择，需核查）"}</label></legend>
+            {range && <div className="grid gap-3 sm:grid-cols-3"><div className="space-y-2"><Label htmlFor={`start-${file.id}`}>{pdf ? "开始物理页" : word ? "开始原文段落" : "开始来源单元"}</Label><Input id={`start-${file.id}`} type="number" min={1} value={range.startPage} onChange={event => changeRange(file.id, { startPage: Number(event.target.value) })} /></div>
+              <div className="space-y-2"><Label htmlFor={`end-${file.id}`}>{pdf ? "结束物理页" : word ? "结束原文段落" : "结束来源单元"}</Label><Input id={`end-${file.id}`} type="number" min={1} value={range.endPage} onChange={event => changeRange(file.id, { endPage: Number(event.target.value) })} /></div>
               <div className="space-y-2"><Label htmlFor={`chapter-${file.id}`}>章节标记</Label><Input id={`chapter-${file.id}`} maxLength={200} value={range.chapter} onChange={event => changeRange(file.id, { chapter: event.target.value })} /></div></div>}
           </fieldset>
         })}
@@ -192,7 +194,7 @@ export default function TeachingPage() {
       <p role="status">{selection.status === "READY" ? "所选页均有可定位来源，内容仍需教师核查。" : "来源不完整，请核对缺页或缩小范围后重新保存。"}</p>
       {selection.warnings.length > 0 && <ul className="list-inside list-disc text-destructive">{selection.warnings.map(warning => <li key={warning}>{warning}</li>)}</ul>}
       <ul className="grid gap-2 sm:grid-cols-2">{selection.sources.map(item => <li key={item.id}><Button variant="outline" className="h-auto w-full justify-start whitespace-normal text-left" disabled={busy} onClick={() => openSource(item.id)}>{item.fileName} · {location(item)}</Button></li>)}</ul>
-      {source && <section aria-label="来源原文" className="space-y-2 rounded-md bg-muted p-4"><h3 className="font-medium">{source.fileName} · {location(source)}</h3><p className="whitespace-pre-wrap break-words">{source.content}</p></section>}
+      {source && <section aria-label="来源原文" className="space-y-2 rounded-md bg-muted p-4"><h3 className="font-medium">{source.fileName} · {location(source)}</h3>{source.coverageWarnings?.length ? <ul className="list-inside list-disc text-destructive">{source.coverageWarnings.map(warning => <li key={warning}>{warning}</li>)}</ul> : null}<p className="whitespace-pre-wrap break-words">{source.content}</p></section>}
     </CardContent></Card>}
   </main>
 }

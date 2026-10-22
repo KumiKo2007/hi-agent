@@ -1383,6 +1383,13 @@ CREATE TABLE teaching_selections (
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX idx_teaching_selections_owner ON teaching_selections(user_id, created_at DESC);
+-- 原文定位只能在重新处理时取得；历史记录保留空值，调用方必须披露不足。
+ALTER TABLE document_unit ADD COLUMN IF NOT EXISTS source_locator_type varchar(40);
+ALTER TABLE document_unit ADD COLUMN IF NOT EXISTS source_locator text;
+ALTER TABLE document_unit ADD COLUMN IF NOT EXISTS coverage_warnings text;
+ALTER TABLE rag_version_documents ADD COLUMN IF NOT EXISTS source_locator_type varchar(40);
+ALTER TABLE rag_version_documents ADD COLUMN IF NOT EXISTS source_locator text;
+ALTER TABLE rag_version_documents ADD COLUMN IF NOT EXISTS coverage_warnings text;
 
 -- 内容目标/运行与不可变产物修订。旧 agent_runs 无需迁移或回填。
 CREATE TABLE IF NOT EXISTS generation_artifacts (

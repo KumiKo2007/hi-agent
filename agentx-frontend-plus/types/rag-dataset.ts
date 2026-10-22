@@ -178,7 +178,7 @@ export interface ReadyKnowledgePreview {
   id: string;
   version: string;
   files: Array<{ id: string; fileName: string }>;
-  sampleDocuments: Array<{ id: string; fileName: string; ragVersionFileId: string; page: number; content: string }>;
+  sampleDocuments: Array<{ id: string; fileName: string; ragVersionFileId: string; page: number; content: string; sourceLocatorType?: string | null; sourceLocator?: string | null; coverageWarnings?: string | null }>;
   totalDocuments: number;
 }
 
@@ -191,6 +191,9 @@ export interface RagSearchRequest {
 
 // 文档单元响应（对应 DocumentUnitDTO）
 export interface DocumentUnitDTO {
+  sourceLocatorType?: string | null;
+  sourceLocator?: string | null;
+  coverageWarnings?: string | null;
   id: string;
   fileId: string;
   page: number;

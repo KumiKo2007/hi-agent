@@ -21,7 +21,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @EnabledIfEnvironmentVariable(named = "TEACHING_INTEGRATION", matches = "true")
 class TeachingSelectionHttpTest {
     private final ObjectMapper json = new ObjectMapper().findAndRegisterModules();
-    private JdbcTemplate jdbc;
+    JdbcTemplate jdbc;
     MockMvc api;
     private String schema;
 
@@ -44,12 +44,12 @@ class TeachingSelectionHttpTest {
         jdbc.execute(
                 "CREATE TABLE rag_version_files (id text PRIMARY KEY, rag_version_id text, file_name text, file_type text, file_page_size integer, deleted_at timestamp)");
         jdbc.execute(
-                "CREATE TABLE rag_version_documents (id text PRIMARY KEY, rag_version_id text, rag_version_file_id text, page integer, content text, deleted_at timestamp)");
+                "CREATE TABLE rag_version_documents (id text PRIMARY KEY, rag_version_id text, rag_version_file_id text, page integer, content text, deleted_at timestamp, source_locator_type text, source_locator text, coverage_warnings text)");
         jdbc.update("INSERT INTO rag_versions VALUES ('v1','owner','dataset','1.0',true,null)");
         jdbc.update(
                 "INSERT INTO rag_version_files VALUES ('f1','v1','导数.pdf','pdf',3,null),('f2','v1','未选资料.pdf','pdf',1,null)");
         jdbc.update(
-                "INSERT INTO rag_version_documents VALUES ('d1','v1','f1',0,'导数定义',null),('d2','v1','f1',1,'切线斜率',null),('d3','v1','f1',2,'导数应用',null),('d4','v1','f2',0,'不得混入',null)");
+                "INSERT INTO rag_version_documents(id,rag_version_id,rag_version_file_id,page,content,deleted_at) VALUES ('d1','v1','f1',0,'导数定义',null),('d2','v1','f1',1,'切线斜率',null),('d3','v1','f1',2,'导数应用',null),('d4','v1','f2',0,'不得混入',null)");
         api = controller();
         UserContext.setCurrentUserId("owner");
     }
@@ -107,6 +107,31 @@ class TeachingSelectionHttpTest {
                  "ranges":[{"fileId":"f1","startPage":1,"endPage":1,"chapter":"导数"}]}
                 """)).andExpect(status().isOk()).andExpect(jsonPath("$.data.status").value("INCOMPLETE"))
                 .andExpect(jsonPath("$.data.sources[0].locatorType").value("DOCUMENT_UNIT"));
+    }
+
+    @Test
+    void should_preserveWordParagraphAndHeadingWithoutInventingPhysicalPages() throws Exception {
+        jdbc.update("UPDATE rag_version_files SET file_type='docx',file_name='导数备课.docx' WHERE id='f1'");
+        jdbc.update(
+                "UPDATE rag_version_documents SET source_locator_type='WORD_PARAGRAPH',source_locator='{\"paragraphIndex\":2,\"heading\":\"导数的概念\"}',coverage_warnings='[]' WHERE id='d2'");
+        JsonNode selected = json
+                .readTree(api.perform(post("/teaching/selections").contentType("application/json").content("""
+                        {"title":"Word段落","datasetId":"dataset","versionId":"v1",
+                         "ranges":[{"fileId":"f1","startPage":2,"endPage":2,"chapter":"导数"}]}
+                        """)).andExpect(status().isOk()).andExpect(jsonPath("$.data.status").value("READY"))
+                        .andExpect(jsonPath("$.data.sources[0].physicalPage").isEmpty())
+                        .andExpect(jsonPath("$.data.sources[0].paragraphIndex").value(2))
+                        .andExpect(jsonPath("$.data.sources[0].heading").value("导数的概念")).andReturn().getResponse()
+                        .getContentAsByteArray())
+                .path("data");
+        String id = selected.path("id").asText();
+        jdbc.update("UPDATE rag_version_documents SET source_locator='{}',content='已经修改' WHERE id='d2'");
+        api.perform(get("/teaching/selections/" + id + "/sources/d2")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.paragraphIndex").value(2))
+                .andExpect(jsonPath("$.data.heading").value("导数的概念"))
+                .andExpect(jsonPath("$.data.content").value("切线斜率"));
+        UserContext.setCurrentUserId("other");
+        api.perform(get("/teaching/selections/" + id + "/sources/d2")).andExpect(status().isBadRequest());
     }
 
     @Test

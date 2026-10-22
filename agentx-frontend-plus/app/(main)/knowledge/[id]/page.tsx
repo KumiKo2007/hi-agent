@@ -1,5 +1,7 @@
 "use client"
 
+import { ragSourceLocation, ragCoverageWarnings } from "@/lib/rag-source-location"
+
 import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
@@ -1053,7 +1055,8 @@ export default function DatasetDetailPage() {
             )}</ul>
             {readyVersionPreview.sampleDocuments.map(document =>
               <div key={document.id} className="rounded border p-3">
-                <p className="text-muted-foreground">{document.fileName} · 第 {document.page} 页</p>
+                <p className="text-muted-foreground">{document.fileName} · {ragSourceLocation(document, document.fileName)}</p>
+                {ragCoverageWarnings(document).map(warning => <p key={warning} className="text-destructive">{warning}</p>)}
                 <p className="whitespace-pre-wrap">{document.content}</p>
               </div>
             )}

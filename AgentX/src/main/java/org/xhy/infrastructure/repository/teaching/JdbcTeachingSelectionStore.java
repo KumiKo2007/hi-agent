@@ -36,19 +36,41 @@ public class JdbcTeachingSelectionStore implements TeachingSelectionStore {
                 row.getString("file_type"), (Integer) row.getObject("file_page_size")), versionId);
         var sources = jdbc.query(
                 """
-                        SELECT d.id,d.rag_version_file_id,f.file_name,f.file_type,d.page,d.content
+                        SELECT d.id,d.rag_version_file_id,f.file_name,f.file_type,d.page,d.content,d.source_locator_type,d.source_locator,d.coverage_warnings
                         FROM rag_version_documents d JOIN rag_version_files f ON f.id=d.rag_version_file_id
                         AND f.rag_version_id=d.rag_version_id
                         WHERE d.rag_version_id=? AND d.page IS NOT NULL AND d.page>=0 AND d.deleted_at IS NULL AND f.deleted_at IS NULL ORDER BY f.id,d.page,d.id
                         """,
-                (row, n) -> new TeachingSelection.Source(row.getString("id"), row.getString("rag_version_file_id"),
-                        row.getString("file_name"), row.getInt("page") + 1,
-                        "pdf".equalsIgnoreCase(row.getString("file_type"))
-                                || "application/pdf".equalsIgnoreCase(row.getString("file_type"))
-                                        ? "FILE_PAGE"
-                                        : "DOCUMENT_UNIT",
-                        row.getString("content"), null),
-                versionId);
+                (row, n) -> {
+                    boolean pdf = "pdf".equalsIgnoreCase(row.getString("file_type"))
+                            || "application/pdf".equalsIgnoreCase(row.getString("file_type"));
+                    String type = row.getString("source_locator_type");
+                    Integer paragraph = null;
+                    String heading = null;
+                    var warnings = new java.util.ArrayList<String>();
+                    try {
+                        if (row.getString("coverage_warnings") != null) {
+                            for (var warning : json.readTree(row.getString("coverage_warnings")))
+                                warnings.add(warning.asText());
+                        }
+                        if ("WORD_PARAGRAPH".equals(type)) {
+                            var locator = json.readTree(row.getString("source_locator"));
+                            paragraph = locator.path("paragraphIndex").asInt();
+                            heading = locator.path("heading").asText("");
+                            if (paragraph < 1 || paragraph != row.getInt("page") + 1)
+                                throw new IllegalArgumentException();
+                        }
+                    } catch (Exception invalid) {
+                        paragraph = null;
+                        warnings.add("来源定位或覆盖信息损坏，请重新处理原文件并固定新版本");
+                    }
+                    if (!pdf && paragraph == null)
+                        warnings.add("历史来源缺少可靠原文段落定位，请重新处理 Word 并固定新版本");
+                    return new TeachingSelection.Source(row.getString("id"), row.getString("rag_version_file_id"),
+                            row.getString("file_name"), pdf || paragraph == null ? row.getInt("page") + 1 : null,
+                            paragraph != null ? "WORD_PARAGRAPH" : pdf ? "FILE_PAGE" : "DOCUMENT_UNIT",
+                            row.getString("content"), null, paragraph, heading, List.copyOf(warnings));
+                }, versionId);
         return new TeachingSelection.Version(versionId, versions.get(0)[1], files, sources);
     }
 

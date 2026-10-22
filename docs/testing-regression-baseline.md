@@ -65,6 +65,6 @@ RUN_TEST_RABBIT_PORT=55672 \
 
 ## 教学与 PR 输入的真实 PostgreSQL HTTP 回归
 
-`teaching-pr-http` 是独立的 CI job，在临时 pgvector/pg15 中运行 `TeachingSelectionHttpTest`、`TeachingOutlineHttpTest`、`PrInputHttpTest` 与 `PrInputPostgresHttpIntegrationTest`。它显式启用 `TEACHING_INTEGRATION` 与 `PR_INPUT_POSTGRES_URL`，要求四份 JUnit 报告均有测试且没有失败、错误或跳过，防止因环境变量缺失默认 skip 而假绿。
+`teaching-pr-http` 是独立的 CI job，在临时 pgvector/pg15 中运行 `TeachingSelectionHttpTest`、`WordSourceHttpTest`、`TeachingOutlineHttpTest`、`PrInputHttpTest` 与 `PrInputPostgresHttpIntegrationTest`。它显式启用 `TEACHING_INTEGRATION` 与 `PR_INPUT_POSTGRES_URL`，要求五份 JUnit 报告均有测试且没有失败、错误或跳过，防止因环境变量缺失默认 skip 而假绿。
 
-测试对大纲/选材/PR 快照持久化使用真实数据库；模型、GitHub 外部读取使用受控响应。该 job 不替代完整生产身份认证、浏览器、真实课本/模型与真实 PR 的 #36/#41 验收。教学 Word/OCR 等后续 HTTP 测试落地后需要加入相同的执行及证据检查清单。
+测试对大纲/选材/PR 快照持久化使用真实数据库；模型、GitHub 外部读取使用受控响应。该 job 不替代完整生产身份认证、浏览器、真实课本/模型与真实 PR 的 #36/#41 验收。Word 测试使用实际 DOCX、本地文件存储及生产 FileRecorder/POI；OCR 等后续 HTTP 测试落地后需要加入相同的执行及证据检查清单。

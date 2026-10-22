@@ -51,7 +51,8 @@ public class FileDetailDomainService {
 
         final FileInfo upload = fileStorageService.of(fileDetailEntity.getMultipartFile())
                 .setMetadata(Map.of("dataset", fileDetailEntity.getDataSetId(), "userid", fileDetailEntity.getUserId()))
-                .upload();
+                // 本地平台无需保存对象 metadata；生产 FileRecorder 仍将归属信息持久化到文件记录。
+                .setNotSupportMetadataThrowException(false).upload();
 
         // 设置文件基本信息
         fileDetailEntity.setId(upload.getId());

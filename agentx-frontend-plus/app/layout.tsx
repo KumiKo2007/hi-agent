@@ -8,6 +8,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="zh-CN" suppressHydrationWarning>
       <head>
         <title>hi Agent</title>
+        <link rel="icon" href="/logo.jpg" type="image/jpeg" />
         <meta name="description" content="您的全方位 AI 代理平台" />
       </head>
       <body>

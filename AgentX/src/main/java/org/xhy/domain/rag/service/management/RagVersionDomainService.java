@@ -184,6 +184,9 @@ public class RagVersionDomainService {
             versionDoc.setOriginalDocumentId(doc.getId());
             versionDoc.setContent(doc.getContent());
             versionDoc.setPage(doc.getPage());
+            versionDoc.setSourceLocatorType(doc.getSourceLocatorType());
+            versionDoc.setSourceLocator(doc.getSourceLocator());
+            versionDoc.setCoverageWarnings(doc.getCoverageWarnings());
             // vectorId 将在向量复制时设置
             ragVersionDocumentRepository.insert(versionDoc);
         }

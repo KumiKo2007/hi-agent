@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { ragSourceLocation, ragCoverageWarnings } from "@/lib/rag-source-location"
 import { MessageMarkdown } from '@/components/ui/message-markdown'
 import { 
   FileText, 
@@ -313,11 +314,12 @@ export function DocumentUnitsDialog({ open, onOpenChange, file }: DocumentUnitsD
               <div className="space-y-4">
                 {documentUnits.map((unit) => (
                   <Card key={unit.id} className="p-4">
+                    {ragCoverageWarnings(unit).map(warning => <p key={warning} className="text-sm text-destructive">{warning}</p>)}
                     <div className="space-y-3">
                       <div className="flex items-start justify-between">
                         <div className="flex items-center gap-2">
                           <Badge variant="outline" className="text-xs">
-                            第 {unit.page + 1} 页
+                            {ragSourceLocation(unit, file.originalFilename || file.filename)}
                           </Badge>
                           {unit.isVector && (
                             <Badge variant="default" className="text-xs">

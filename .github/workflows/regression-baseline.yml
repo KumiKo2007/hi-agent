@@ -121,7 +121,7 @@ jobs:
           PR_INPUT_POSTGRES_URL: jdbc:postgresql://localhost:55425/teaching_test
           PR_INPUT_POSTGRES_USER: postgres
           PR_INPUT_POSTGRES_PASSWORD: teaching-test
-        run: ./mvnw -B -ntp -Dtest=TeachingSelectionHttpTest,TeachingOutlineHttpTest,PrInputHttpTest,PrInputPostgresHttpIntegrationTest -DforkedProcessTimeoutInSeconds=120 test
+        run: ./mvnw -B -ntp -Dtest=TeachingSelectionHttpTest,WordSourceHttpTest,TeachingOutlineHttpTest,PrInputHttpTest,PrInputPostgresHttpIntegrationTest -DforkedProcessTimeoutInSeconds=120 test
       - name: Reject missing, empty or skipped HTTP regression reports
         working-directory: AgentX
         run: |
@@ -131,6 +131,7 @@ jobs:
 
           expected = [
               "org.xhy.interfaces.api.portal.teaching.TeachingSelectionHttpTest",
+              "org.xhy.interfaces.api.portal.teaching.WordSourceHttpTest",
               "org.xhy.interfaces.api.portal.teaching.TeachingOutlineHttpTest",
               "org.xhy.interfaces.api.portal.review.PrInputHttpTest",
               "org.xhy.interfaces.api.portal.review.PrInputPostgresHttpIntegrationTest",

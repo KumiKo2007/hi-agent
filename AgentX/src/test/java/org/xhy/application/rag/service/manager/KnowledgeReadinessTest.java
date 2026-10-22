@@ -46,7 +46,8 @@ class KnowledgeReadinessTest {
         service = new RagQaDatasetAppService(datasets, files, mock(DocumentUnitDomainService.class),
                 mock(MessagePublisher.class), mock(EmbeddingDomainService.class), mock(RagPublishAppService.class),
                 versions, mock(UserRagDomainService.class), mock(RagDataAccessDomainService.class),
-                mock(UserModelConfigResolver.class));
+                mock(UserModelConfigResolver.class),
+                mock(org.springframework.transaction.PlatformTransactionManager.class));
     }
 
     @Test

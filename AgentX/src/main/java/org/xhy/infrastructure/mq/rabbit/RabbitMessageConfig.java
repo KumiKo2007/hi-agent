@@ -1,5 +1,6 @@
 package org.xhy.infrastructure.mq.rabbit;
 
+import org.springframework.amqp.core.AcknowledgeMode;
 import org.springframework.amqp.rabbit.annotation.EnableRabbit;
 import org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFactory;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
@@ -42,6 +43,9 @@ public class RabbitMessageConfig {
     public SimpleRabbitListenerContainerFactory rabbitListenerContainerFactory(ConnectionFactory connectionFactory) {
         SimpleRabbitListenerContainerFactory factory = new SimpleRabbitListenerContainerFactory();
         factory.setConnectionFactory(connectionFactory);
+        // RAG 消费者自行 basicAck；自建工厂必须显式使用手动确认，避免 AUTO 再次确认。
+        // RunWorkListener 单独声明 AUTO，继续由容器确认。
+        factory.setAcknowledgeMode(AcknowledgeMode.MANUAL);
         // 设置 JSON 消息转换器
         factory.setMessageConverter(jsonMessageConverter());
         return factory;
