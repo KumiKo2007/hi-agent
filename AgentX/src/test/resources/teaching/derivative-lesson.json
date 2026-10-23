@@ -1,0 +1,74 @@
+{
+  "student": {
+    "objectives": [
+      "理解导数定义与切线斜率"
+    ]
+  },
+  "teacher": {
+    "objectives": [
+      "由平均变化率引入瞬时变化率"
+    ],
+    "difficulties": [
+      "极限中增量不为零"
+    ],
+    "stages": [
+      {
+        "title": "概念与推导",
+        "minutes": 30,
+        "guidance": "让学生观察割线趋向切线"
+      },
+      {
+        "title": "例题讲解",
+        "minutes": 15,
+        "guidance": "核对点坐标与斜率"
+      }
+    ],
+    "prompts": [
+      "平均变化率与瞬时变化率有什么联系？"
+    ],
+    "misconceptions": [
+      "导数存在时连续，连续未必可导"
+    ]
+  },
+  "knowledge": [
+    {
+      "id": "k1",
+      "title": "导数定义",
+      "text": "当极限存在时，$f\\prime(x_0)=\\lim_{h\\to0}\\frac{f(x_0+h)-f(x_0)}{h}$；几何意义为切线斜率。",
+      "evidence": {
+        "kind": "SOURCE",
+        "sourceIds": [
+          "s1"
+        ],
+        "note": ""
+      }
+    }
+  ],
+  "derivations": [
+    {
+      "id": "d1",
+      "title": "平方函数的导数",
+      "text": "对 $f(x)=x^2$，$\\frac{(1+h)^2-1}{h}=2+h$，当 $h\\to0$ 时得到 $f\\prime(1)=2$。",
+      "evidence": {
+        "kind": "SOURCE",
+        "sourceIds": [
+          "s1"
+        ],
+        "note": ""
+      }
+    }
+  ],
+  "examples": [
+    {
+      "id": "e1",
+      "title": "切线例题",
+      "text": "求 $y=x^2$ 在 $(1,1)$ 处的切线。",
+      "evidence": {
+        "kind": "SUPPLEMENT",
+        "sourceIds": [],
+        "note": "自编例题，不是教材原题"
+      },
+      "solution": "$f\\prime(1)=2$，因此 $y-1=2(x-1)$，即 $y=2x-1$。"
+    }
+  ]
+}

@@ -2,6 +2,7 @@ import type React from "react"
 import { Providers } from "./providers"
 import { ThemeProvider } from "@/components/theme-provider"
 import "@/styles/globals.css"
+import "katex/dist/katex.min.css"
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (

@@ -68,15 +68,17 @@ class TeachingOcrHttpTest {
     @Test
     void should_keepDuplicatePhysicalPageIncompleteInsteadOfApprovingAmbiguousSources() throws Exception {
         jdbc.update("UPDATE rag_version_documents SET coverage_warnings='[]' WHERE id='d1'");
-        jdbc.update("INSERT INTO rag_version_documents VALUES('duplicate','v1','f1',0,'重复页正文','FILE_PAGE','{}','[]',null)");
+        jdbc.update(
+                "INSERT INTO rag_version_documents VALUES('duplicate','v1','f1',0,'重复页正文','FILE_PAGE','{}','[]',null)");
         api.perform(get("/teaching/ocr/versions/v1/files/f1"))
                 .andExpect(jsonPath("$.data.pages[0].status").value("MISSING"));
         api.perform(post("/teaching/selections").contentType("application/json").content(
                 """
-                {"title":"有重复来源","datasetId":"dataset","versionId":"v1","ranges":[{"fileId":"f1","startPage":1,"endPage":1}]}
-                """))
+                        {"title":"有重复来源","datasetId":"dataset","versionId":"v1","ranges":[{"fileId":"f1","startPage":1,"endPage":1}]}
+                        """))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.data.status").value("INCOMPLETE"))
-                .andExpect(jsonPath("$.data.warnings").value(org.hamcrest.Matchers.hasItem(org.hamcrest.Matchers.containsString("重复"))));
+                .andExpect(jsonPath("$.data.warnings")
+                        .value(org.hamcrest.Matchers.hasItem(org.hamcrest.Matchers.containsString("重复"))));
     }
 
     @Test

@@ -359,3 +359,7 @@ body {
       0 8px 24px -6px hsl(247 78% 66% / 0.45);
   }
 }
+
+/* 长数学表达式在自己的容器滚动，不撑破手机页面。 */
+.lesson-math .katex-display { overflow-x: auto; overflow-y: hidden; padding-block: 0.25rem; }
+.lesson-math { overflow-x: auto; }

@@ -48,7 +48,8 @@ class ScannedPdfSourceHttpTest extends TeachingOcrHttpTest {
         }
         try (var connection = jdbc.getDataSource().getConnection()) {
             org.springframework.jdbc.datasource.init.ScriptUtils.executeSqlScript(connection,
-                    new org.springframework.core.io.ClassPathResource("db/migration/V20261020002__word_source_locations.sql"));
+                    new org.springframework.core.io.ClassPathResource(
+                            "db/migration/V20261020002__word_source_locations.sql"));
         }
         var configuration = new MybatisConfiguration();
         configuration.setMapUnderscoreToCamelCase(true);
@@ -100,7 +101,9 @@ class ScannedPdfSourceHttpTest extends TeachingOcrHttpTest {
             boolean failed = color.getGreen() > 200 && color.getRed() < 100;
             String text = color.getBlue() > 200
                     ? ""
-                    : color.getRed() > 200 && color.getGreen() > 200 ? "公式残缺 \\(x^{2\\)" : "导数是变化率。$f(x)=x^2$，$f'(1)=2$。";
+                    : color.getRed() > 200 && color.getGreen() > 200
+                            ? "公式残缺 \\(x^{2\\)"
+                            : "导数是变化率。$f(x)=x^2$，$f'(1)=2$。";
             byte[] response = failed
                     ? "{\"error\":{\"message\":\"fixture page unavailable\",\"type\":\"invalid_request_error\"}}"
                             .getBytes(java.nio.charset.StandardCharsets.UTF_8)
@@ -188,7 +191,8 @@ class ScannedPdfSourceHttpTest extends TeachingOcrHttpTest {
         assertTrue(new Color(rendered.getRGB(4, 4)).getGreen() > 200, "原页必须是第4页黄色样例，不能串页");
         // 快照必须使用部署表的NOT NULL约束及生产ready-version HTTP，不能用手工INSERT绕过复制链路。
         String init = Files.readString(Path.of("../docs/sql/01_init.sql"));
-        for (String table : List.of("rag_versions", "rag_version_files", "rag_version_documents", "ai_rag_qa_dataset")) {
+        for (String table : List.of("rag_versions", "rag_version_files", "rag_version_documents",
+                "ai_rag_qa_dataset")) {
             jdbc.execute("DROP TABLE IF EXISTS " + table);
             var matcher = java.util.regex.Pattern
                     .compile("create table public\\." + table + " \\(.*?\\n\\);", java.util.regex.Pattern.DOTALL)
@@ -198,38 +202,44 @@ class ScannedPdfSourceHttpTest extends TeachingOcrHttpTest {
         }
         try (var connection = jdbc.getDataSource().getConnection()) {
             org.springframework.jdbc.datasource.init.ScriptUtils.executeSqlScript(connection,
-                    new org.springframework.core.io.ClassPathResource("db/migration/V20261020002__word_source_locations.sql"));
+                    new org.springframework.core.io.ClassPathResource(
+                            "db/migration/V20261020002__word_source_locations.sql"));
         }
         jdbc.update("INSERT INTO ai_rag_qa_dataset(id,name,user_id) VALUES('dataset','扫描教材','owner')");
         // 本slice边界起点为已完成向量化文件；上传/MQ/JWT完整路径另由真实浏览器验收覆盖。
         jdbc.update("UPDATE file_detail SET processing_status=4 WHERE id=?", originalFile);
-        var datasetService = new org.xhy.domain.rag.service.RagQaDatasetDomainService(session.getMapper(RagQaDatasetRepository.class));
+        var datasetService = new org.xhy.domain.rag.service.RagQaDatasetDomainService(
+                session.getMapper(RagQaDatasetRepository.class));
         var versionService = new org.xhy.domain.rag.service.management.RagVersionDomainService(
                 session.getMapper(RagVersionRepository.class), session.getMapper(RagVersionFileRepository.class),
                 session.getMapper(RagVersionDocumentRepository.class), datasetService,
                 session.getMapper(FileDetailRepository.class), session.getMapper(DocumentUnitRepository.class));
-        var files = new org.xhy.domain.rag.service.FileDetailDomainService(storage, session.getMapper(FileDetailRepository.class),
+        var files = new org.xhy.domain.rag.service.FileDetailDomainService(storage,
+                session.getMapper(FileDetailRepository.class),
                 new org.xhy.domain.rag.service.FileProcessingStateMachineService(List.of()));
-        var app = new org.xhy.application.rag.service.manager.RagQaDatasetAppService(datasetService, files,
-                null, null, null, null, versionService, null, null, null,
+        var app = new org.xhy.application.rag.service.manager.RagQaDatasetAppService(datasetService, files, null, null,
+                null, null, versionService, null, null, null,
                 new org.springframework.jdbc.datasource.DataSourceTransactionManager(jdbc.getDataSource()));
-        var readyApi = org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup(
-                new org.xhy.interfaces.api.portal.rag.RagQaDatasetController(app))
+        var readyApi = org.springframework.test.web.servlet.setup.MockMvcBuilders
+                .standaloneSetup(new org.xhy.interfaces.api.portal.rag.RagQaDatasetController(app))
                 .setControllerAdvice(new org.xhy.infrastructure.config.GlobalExceptionHandler()).build();
         String versionId = json.readTree(readyApi.perform(post("/rag/datasets/dataset/ready-versions"))
-                .andExpect(status().isOk()).andReturn().getResponse().getContentAsByteArray()).path("data").path("id").asText();
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsByteArray()).path("data").path("id")
+                .asText();
         var preview = json.readTree(readyApi.perform(get("/rag/datasets/dataset/ready-versions/" + versionId))
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsByteArray()).path("data");
         String fileId = preview.path("files").get(0).path("id").asText();
         String fixed = "/teaching/ocr/versions/" + versionId + "/files/" + fileId;
         api.perform(get(fixed)).andExpect(jsonPath("$.data.pages.length()").value(4))
                 .andExpect(jsonPath("$.data.pages[1].status").value("MISSING"))
-                .andExpect(jsonPath("$.data.pages[1].coverageWarnings[0]").value(org.hamcrest.Matchers.containsString("失败")))
+                .andExpect(jsonPath("$.data.pages[1].coverageWarnings[0]")
+                        .value(org.hamcrest.Matchers.containsString("失败")))
                 .andExpect(jsonPath("$.data.pages[3].status").value("FORMULA_GAP"));
         api.perform(post(fixed + "/pages/1/reviews").contentType("application/json")
                 .content("{\"note\":\"已对照第一页定义和公式；仍保留自动警告\"}")).andExpect(status().isOk());
-        String request = json.writeValueAsString(java.util.Map.of("title", "仅保留完整首页", "datasetId", "dataset", "versionId", versionId,
-                "ranges", List.of(java.util.Map.of("fileId", fileId, "startPage", 1, "endPage", 1))));
+        String request = json
+                .writeValueAsString(java.util.Map.of("title", "仅保留完整首页", "datasetId", "dataset", "versionId", versionId,
+                        "ranges", List.of(java.util.Map.of("fileId", fileId, "startPage", 1, "endPage", 1))));
         api.perform(post("/teaching/selections").contentType("application/json").content(request))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.data.status").value("READY"))
                 .andExpect(jsonPath("$.data.sources.length()").value(1))
