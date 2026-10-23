@@ -46,7 +46,7 @@ import org.xhy.infrastructure.rag.service.UserModelConfigResolver;
 /** document预处理消费者
  * @author zang
  * @date 2025-01-10 */
-@RabbitListener(bindings = @QueueBinding(value = @Queue(RagDocSyncOcrEvent.QUEUE_NAME), exchange = @Exchange(value = RagDocSyncOcrEvent.EXCHANGE_NAME, type = ExchangeTypes.TOPIC), key = RagDocSyncOcrEvent.ROUTE_KEY))
+@RabbitListener(ackMode = "MANUAL", bindings = @QueueBinding(value = @Queue(RagDocSyncOcrEvent.QUEUE_NAME), exchange = @Exchange(value = RagDocSyncOcrEvent.EXCHANGE_NAME, type = ExchangeTypes.TOPIC), key = RagDocSyncOcrEvent.ROUTE_KEY))
 @Component
 public class RagDocConsumer {
 
@@ -158,7 +158,8 @@ public class RagDocConsumer {
             // 检查是否有可用的文档单元进行向量化
             List<DocumentUnitEntity> documentUnits = documentUnitRepository
                     .selectList(Wrappers.lambdaQuery(DocumentUnitEntity.class).eq(DocumentUnitEntity::getFileId, fileId)
-                            .eq(DocumentUnitEntity::getIsOcr, true).eq(DocumentUnitEntity::getIsVector, false));
+                            .eq(DocumentUnitEntity::getIsOcr, true).eq(DocumentUnitEntity::getIsVector, false)
+                            .isNotNull(DocumentUnitEntity::getContent).apply("content ~ '[^[:space:]]'"));
 
             if (documentUnits.isEmpty()) {
                 log.warn("未找到用于向量化的文档单元，文件ID: {}", fileId);

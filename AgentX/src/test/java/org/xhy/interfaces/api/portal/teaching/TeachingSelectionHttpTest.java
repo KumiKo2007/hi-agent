@@ -38,6 +38,8 @@ class TeachingSelectionHttpTest {
         try (var connection = ds.getConnection()) {
             ScriptUtils.executeSqlScript(connection,
                     new ClassPathResource("db/migration/V20261020001__teaching_selections.sql"));
+            ScriptUtils.executeSqlScript(connection,
+                    new ClassPathResource("db/migration/V20261020003__teaching_source_reviews.sql"));
         }
         jdbc.execute(
                 "CREATE TABLE rag_versions (id text PRIMARY KEY, user_id text, original_rag_id text, version text, search_ready boolean, deleted_at timestamp)");

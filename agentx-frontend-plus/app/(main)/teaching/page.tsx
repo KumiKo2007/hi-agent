@@ -7,9 +7,10 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { getAllDatasets, getKnowledgeReadiness, createReadyKnowledgeVersion, getReadyKnowledgeVersion, uploadFile } from "@/lib/rag-dataset-service"
+import { getAllDatasets, getKnowledgeReadiness, createReadyKnowledgeVersion, getReadyKnowledgeVersion, getAllDatasetFiles, uploadFile } from "@/lib/rag-dataset-service"
+import { OcrReviewPanel } from "@/components/teaching/ocr-review-panel"
 import { TeachingService } from "@/lib/teaching-service"
-import type { KnowledgeReadiness, RagDataset, ReadyKnowledgePreview, ApiResponse } from "@/types/rag-dataset"
+import type { KnowledgeReadiness, RagDataset, ReadyKnowledgePreview, ApiResponse, FileDetail } from "@/types/rag-dataset"
 import type { TeachingRange, TeachingSelection, TeachingSource } from "@/types/teaching"
 
 function value<T>(response: ApiResponse<T>): T {
@@ -28,6 +29,10 @@ export default function TeachingPage() {
   const datasetRef = useRef("")
   const requestId = useRef(0)
   const [readiness, setReadiness] = useState<KnowledgeReadiness | null>(null)
+  const [currentFiles, setCurrentFiles] = useState<FileDetail[]>([])
+  const [currentOcr, setCurrentOcr] = useState("")
+  const [fixedOcr, setFixedOcr] = useState("")
+  const [reviewRefresh, setReviewRefresh] = useState(0)
   const [preview, setPreview] = useState<ReadyKnowledgePreview | null>(null)
   const [ranges, setRanges] = useState<TeachingRange[]>([])
   const [title, setTitle] = useState("高二数学 · 导数模块")
@@ -67,7 +72,7 @@ export default function TeachingPage() {
 
   async function loadDataset(id: string) {
     datasetRef.current = id
-    setDatasetId(id); setReadiness(null); setPreview(null); setRanges([]); setError(""); setNotice("")
+    setDatasetId(id); setCurrentFiles([]); setCurrentOcr(""); setFixedOcr(""); setReadiness(null); setPreview(null); setRanges([]); setError(""); setNotice("")
     const token = ++requestId.current
     if (!id) return
     setBusy(true)
@@ -75,6 +80,9 @@ export default function TeachingPage() {
       const state = value(await getKnowledgeReadiness(id))
       if (token !== requestId.current) return
       setReadiness(state)
+      const files = value(await getAllDatasetFiles(id))
+      if (token !== requestId.current) return
+      setCurrentFiles(files)
       if (state.latestReadyVersionId) {
         const fixed = value(await getReadyKnowledgeVersion(id, state.latestReadyVersionId))
         if (token === requestId.current) setPreview(fixed)
@@ -163,6 +171,8 @@ export default function TeachingPage() {
           {readiness.status !== "READY" && <p className="text-sm text-muted-foreground">请在知识库核对失败或未完成文件，再刷新状态。已有固定版本仍可选用，但不包含新上传资料。</p>}
           <Button disabled={busy || readiness.status !== "READY"} onClick={confirmVersion}>确认当前资料为新版本</Button>
         </div>}
+        {currentFiles.filter(file => file.ext?.toLowerCase() === "pdf").map(file => <Button key={file.id} variant="outline" disabled={busy} onClick={() => setCurrentOcr(current => current === file.id ? "" : file.id)}>核对当前识别：{file.originalFilename || file.filename}</Button>)}
+        {currentOcr && <OcrReviewPanel key={`${currentOcr}-${requestId.current}`} fileId={currentOcr} />}
         {preview && <p className="break-all text-sm">本次选用固定知识版本：{preview.version} · {preview.id}</p>}
       </CardContent></Card>
       {preview && <Card><CardHeader><CardTitle>2. 限定文件与章节范围</CardTitle></CardHeader><CardContent className="space-y-5">
@@ -175,11 +185,14 @@ export default function TeachingPage() {
           const last = Math.max(1, ...preview.sampleDocuments.filter(doc => doc.ragVersionFileId === file.id).map(doc => doc.page + 1))
           return <fieldset className="space-y-3 rounded-md border p-4" key={file.id}>
             <legend className="px-1"><label className="flex items-center gap-2"><input type="checkbox" checked={Boolean(range)} onChange={event => setRanges(current => event.target.checked ? [...current, { fileId: file.id, startPage: 1, endPage: last, chapter: "" }] : current.filter(item => item.fileId !== file.id))} />{file.fileName}{word ? "（按正文原文段落选择；历史资料需重新处理）" : !pdf && "（按来源处理单元选择，需核查）"}</label></legend>
+            {pdf && <Button variant="outline" disabled={busy} onClick={() => setFixedOcr(current => current === file.id ? "" : file.id)}>逐页核对：{file.fileName}</Button>}
+            {pdf && fixedOcr === file.id && <OcrReviewPanel fileId={file.id} versionId={preview.id} onReviewed={() => setReviewRefresh(current => current + 1)} onSelectPage={page => setRanges(current => [...current.filter(item => item.fileId !== file.id), { fileId: file.id, startPage: page, endPage: page, chapter: range?.chapter || "" }])} />}
             {range && <div className="grid gap-3 sm:grid-cols-3"><div className="space-y-2"><Label htmlFor={`start-${file.id}`}>{pdf ? "开始物理页" : word ? "开始原文段落" : "开始来源单元"}</Label><Input id={`start-${file.id}`} type="number" min={1} value={range.startPage} onChange={event => changeRange(file.id, { startPage: Number(event.target.value) })} /></div>
               <div className="space-y-2"><Label htmlFor={`end-${file.id}`}>{pdf ? "结束物理页" : word ? "结束原文段落" : "结束来源单元"}</Label><Input id={`end-${file.id}`} type="number" min={1} value={range.endPage} onChange={event => changeRange(file.id, { endPage: Number(event.target.value) })} /></div>
               <div className="space-y-2"><Label htmlFor={`chapter-${file.id}`}>章节标记</Label><Input id={`chapter-${file.id}`} maxLength={200} value={range.chapter} onChange={event => changeRange(file.id, { chapter: event.target.value })} /></div></div>}
           </fieldset>
         })}
+        {reviewRefresh > 0 && <p role="status" className="text-sm">已保存本版本核对记录，请重新保存选材以固定核对依据；已有选材保持原样。</p>}
         <Button disabled={busy || !ranges.length || !title.trim() || ranges.some(range => range.startPage < 1 || range.endPage < range.startPage)} onClick={save}>{busy ? "正在处理…" : "保存固定选材"}</Button>
       </CardContent></Card>}
       </div>
@@ -194,6 +207,7 @@ export default function TeachingPage() {
       <p role="status">{selection.status === "READY" ? "所选页均有可定位来源，内容仍需教师核查。" : "来源不完整，请核对缺页或缩小范围后重新保存。"}</p>
       {selection.warnings.length > 0 && <ul className="list-inside list-disc text-destructive">{selection.warnings.map(warning => <li key={warning}>{warning}</li>)}</ul>}
       <ul className="grid gap-2 sm:grid-cols-2">{selection.sources.map(item => <li key={item.id}><Button variant="outline" className="h-auto w-full justify-start whitespace-normal text-left" disabled={busy} onClick={() => openSource(item.id)}>{item.fileName} · {location(item)}</Button></li>)}</ul>
+      {[...new Map(selection.sources.filter(item => item.locatorType === "FILE_PAGE").map(item => [item.fileId, item.fileName])).entries()].map(([fileId, fileName]) => <details key={fileId} className="rounded-md border p-3"><summary className="cursor-pointer">核对固定来源原页：{fileName}</summary><OcrReviewPanel fileId={fileId} versionId={selection.versionId} /></details>)}
       {source && <section aria-label="来源原文" className="space-y-2 rounded-md bg-muted p-4"><h3 className="font-medium">{source.fileName} · {location(source)}</h3>{source.coverageWarnings?.length ? <ul className="list-inside list-disc text-destructive">{source.coverageWarnings.map(warning => <li key={warning}>{warning}</li>)}</ul> : null}<p className="whitespace-pre-wrap break-words">{source.content}</p></section>}
     </CardContent></Card>}
   </main>

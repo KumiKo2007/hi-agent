@@ -69,9 +69,23 @@ public class JdbcTeachingSelectionStore implements TeachingSelectionStore {
                     return new TeachingSelection.Source(row.getString("id"), row.getString("rag_version_file_id"),
                             row.getString("file_name"), pdf || paragraph == null ? row.getInt("page") + 1 : null,
                             paragraph != null ? "WORD_PARAGRAPH" : pdf ? "FILE_PAGE" : "DOCUMENT_UNIT",
-                            row.getString("content"), null, paragraph, heading, List.copyOf(warnings));
+                            row.getString("content"), null, paragraph, heading, List.copyOf(warnings), null);
                 }, versionId);
-        return new TeachingSelection.Version(versionId, versions.get(0)[1], files, sources);
+        var withReviews = sources.stream().map(source -> {
+            if (!"FILE_PAGE".equals(source.locatorType()) || source.content() == null || source.content().isBlank())
+                return source;
+            String hash = org.xhy.domain.teaching.model.TeachingOcr.fingerprint(source.id(), source.content(),
+                    source.coverageWarnings());
+            var reviews = jdbc.query(
+                    "SELECT note,reviewed_at FROM teaching_source_reviews WHERE user_id=? AND version_id=? AND source_id=? AND content_hash=?",
+                    (row, n) -> new org.xhy.domain.teaching.model.TeachingOcr.Review(row.getString(1), row.getString(2),
+                            hash),
+                    userId, versionId, source.id(), hash);
+            return new TeachingSelection.Source(source.id(), source.fileId(), source.fileName(), source.physicalPage(),
+                    source.locatorType(), source.content(), source.sourceUrl(), source.paragraphIndex(),
+                    source.heading(), source.coverageWarnings(), reviews.isEmpty() ? null : reviews.get(0));
+        }).toList();
+        return new TeachingSelection.Version(versionId, versions.get(0)[1], files, withReviews);
     }
 
     @Override

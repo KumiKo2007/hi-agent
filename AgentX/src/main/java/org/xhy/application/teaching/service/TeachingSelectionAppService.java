@@ -28,6 +28,7 @@ public class TeachingSelectionAppService {
         var ranges = new ArrayList<TeachingSelection.Range>();
         var selected = new LinkedHashMap<String, TeachingSelection.Source>();
         var warnings = new ArrayList<String>();
+        boolean incomplete = false;
         long pageCount = 0;
         for (var range : request.ranges()) {
             var file = version.files().stream().filter(f -> f.id().equals(range.fileId())).findFirst()
@@ -42,6 +43,7 @@ public class TeachingSelectionAppService {
             }
             if (!("pdf".equalsIgnoreCase(file.fileType()) || "application/pdf".equalsIgnoreCase(file.fileType())
                     || "docx".equalsIgnoreCase(file.fileType()) || "doc".equalsIgnoreCase(file.fileType()))) {
+                incomplete = true;
                 warnings.add(file.fileName() + " 目前只有处理单元定位，不能作为文件物理页引用，请核对段落来源或使用 PDF");
             }
             ranges.add(
@@ -53,7 +55,13 @@ public class TeachingSelectionAppService {
                                 && s.content() != null
                                 && (!s.content().isBlank() || "WORD_PARAGRAPH".equals(s.locatorType())))
                         .toList();
+                if (rows.size() > 1 && ("pdf".equalsIgnoreCase(file.fileType())
+                        || "application/pdf".equalsIgnoreCase(file.fileType()))) {
+                    incomplete = true;
+                    warnings.add(file.fileName() + " 文件物理第 " + page + " 页存在重复识别来源，请重新处理资料");
+                }
                 if (rows.isEmpty()) {
+                    incomplete = true;
                     String location = ("docx".equalsIgnoreCase(file.fileType())
                             || "doc".equalsIgnoreCase(file.fileType()))
                                     ? " 原文第 " + page + " 段"
@@ -61,23 +69,27 @@ public class TeachingSelectionAppService {
                     warnings.add(file.fileName() + location + "缺少可用来源，请核对识别结果或缩小范围");
                 }
                 for (var source : rows) {
-                    if (source.coverageWarnings() != null)
+                    if (source.coverageWarnings() != null && !source.coverageWarnings().isEmpty()) {
                         warnings.addAll(source.coverageWarnings());
+                        if (!"FILE_PAGE".equals(source.locatorType()) || source.review() == null
+                                || org.xhy.domain.teaching.model.TeachingOcr.hasHardGap(source.coverageWarnings()))
+                            incomplete = true;
+                    }
                     selected.put(source.id(),
                             new TeachingSelection.Source(source.id(), source.fileId(), source.fileName(),
                                     source.physicalPage(), source.locatorType(), source.content(),
                                     "/teaching/selections/" + id + "/sources/" + source.id(), source.paragraphIndex(),
-                                    source.heading(), source.coverageWarnings()));
+                                    source.heading(), source.coverageWarnings(), source.review()));
                 }
             }
         }
         if (selected.values().stream().noneMatch(source -> source.content() != null && !source.content().isBlank())) {
+            incomplete = true;
             warnings.add("所选范围未包含可用正文，请核对原文并扩大范围");
         }
         var selection = new TeachingSelection(id, request.title().trim(), request.datasetId(), version.id(),
                 version.versionNumber(), List.copyOf(ranges), List.copyOf(selected.values()),
-                warnings.isEmpty() ? "READY" : "INCOMPLETE", warnings.stream().distinct().toList(),
-                Instant.now().toString());
+                incomplete ? "INCOMPLETE" : "READY", warnings.stream().distinct().toList(), Instant.now().toString());
         store.save(selection, userId);
         return selection;
     }
