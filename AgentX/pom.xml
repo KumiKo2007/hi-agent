@@ -40,7 +40,7 @@
         <spotless.version>2.37.0</spotless.version>
         <x-file-storage.version>2.2.0</x-file-storage.version>
         <pdf-box>3.0.2</pdf-box>
-        <commons-io.version>2.16.1</commons-io.version>
+        <commons-io.version>2.18.0</commons-io.version>
         <poi.version>5.4.0</poi.version>
         <stream-query.version>3.0.0</stream-query.version>
         <forest.version>1.7.1</forest.version>
@@ -79,6 +79,12 @@
                 <groupId>org.apache.poi</groupId>
                 <artifactId>poi-scratchpad</artifactId>
                 <version>${poi.version}</version>
+            </dependency>
+            <!-- POI 5.4.0 requires this ZIP API; transitive OCR/Tika dependencies otherwise select an older version. -->
+            <dependency>
+                <groupId>org.apache.commons</groupId>
+                <artifactId>commons-compress</artifactId>
+                <version>1.27.1</version>
             </dependency>
             <dependency>
                 <groupId>commons-io</groupId>

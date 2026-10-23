@@ -1,0 +1,86 @@
+import { expect, test } from "@playwright/test"
+import { readFile } from "node:fs/promises"
+
+// 真实完整Spring应用/JWT/PG/模型Registry/HTTP下载；唯一外部模型服务为OpenAI协议fixture。
+// GitHub身份核验/MCP为外部边界替身，固定快照经生产HTTP读取，真实服务质量留#41。
+test("固定PR到Bug报告、精确修订下载、空发现、失败恢复查看与所有者隔离", async ({ page, request }) => {
+  const api = process.env.PR_REVIEW_API_URL || "http://127.0.0.1:58088/api"
+  const fixtureFile = process.env.PR_REVIEW_FIXTURE_FILE
+  if (!fixtureFile) throw new Error("请先准备隔离的完整APP报告fixture")
+  const fixture = JSON.parse(await readFile(fixtureFile, "utf8")) as { inputId: string; controlId: string; failureId: string; modelId: string }
+  const login = await request.post(`${api}/login`, { data: { account: "runtime-user@example.invalid", password: "RuntimeUser2026Local" } })
+  expect(login.status()).toBe(200)
+  const auth = (await login.json()).data.token as string
+  await page.addInitScript(value => localStorage.setItem("auth_token", value), auth)
+  const errors: string[] = []
+  page.on("pageerror", error => errors.push(error.message))
+  page.on("console", message => { if (message.type() === "error") errors.push(message.text()) })
+  const seeded = (await (await request.get(`${api}/reviews/inputs/${fixture.inputId}`, { headers: { Authorization: `Bearer ${auth}` } })).json()).data
+  await page.goto("/reviews")
+  await expect(page.getByLabel("读取能力")).toBeEnabled()
+  const readerLabels = await page.getByLabel("读取能力").locator("option").allTextContents()
+  const reader = readerLabels.find(label => label.endsWith(seeded.serviceId))
+  expect(reader).toBeTruthy()
+  await page.getByLabel("读取能力").selectOption({ label: reader! })
+  await page.getByLabel("GitHub PR 链接").fill("https://github.com/alice/repo/pull/3801")
+  await page.getByRole("button", { name: "读取并固定输入", exact: true }).click()
+  await expect(page.getByText("b".repeat(40), { exact: true })).toBeVisible()
+  const reviewedInputId = new URL(page.url()).searchParams.get("input")
+  await page.getByRole("link", { name: "为此固定输入生成 Bug 报告" }).click()
+  await expect(page.getByLabel("审查模型")).toBeEnabled()
+  await page.getByLabel("审查模型").selectOption(fixture.modelId)
+  await page.getByRole("button", { name: "新建并生成审查报告" }).click()
+  await expect(page.getByRole("heading", { name: "报告已保存", exact: true })).toBeVisible({ timeout: 60_000 })
+  await expect(page.getByRole("heading", { name: "有源码证据的发现（结论待人工复核） · 1", exact: true })).toBeVisible()
+  await expect(page.getByRole("heading", { name: "待核实线索 · 1", exact: true })).toBeVisible()
+  await expect(page.getByText("空数组产生NaN", { exact: false }).first()).toBeVisible()
+  await expect(page.locator("img[src='x']")).toHaveCount(0)
+  const reportId = new URL(page.url()).searchParams.get("report")
+  expect(reportId).toBeTruthy()
+  const headers = { Authorization: `Bearer ${auth}` }
+  const saved = (await (await request.get(`${api}/reviews/reports/${reportId}`, { headers })).json()).data
+  expect(saved.run.status).toBe("SUCCEEDED")
+  expect(saved.revision.inputRevisionId).toBe(reviewedInputId)
+  expect(saved.revision.content.findings[0].sourceUrl).toBe(`https://github.com/alice/repo/blob/${"b".repeat(40)}/src/math.ts#L2-L2`)
+  expect(saved.revision.content.unverifiedFindings[0].sourceUrl).toBe("")
+  await page.reload()
+  await expect(page.getByRole("heading", { name: "报告已保存", exact: true })).toBeVisible()
+  const [download] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: "下载此修订 Markdown" }).click()])
+  const downloaded = await download.path()
+  expect(downloaded).toBeTruthy()
+  const markdown = await readFile(downloaded!, "utf8")
+  expect(markdown).toContain(saved.currentRevisionId)
+  expect(markdown).toContain("b".repeat(40))
+  expect(markdown).toContain("return sum / values.length;")
+  expect(markdown).toContain("未执行")
+  expect(markdown).not.toContain("<img")
+  expect(markdown).toContain("&lt;img")
+  await page.setViewportSize({ width: 375, height: 850 })
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(375)
+  await page.setViewportSize({ width: 1440, height: 1000 })
+  const repeated = await request.post(`${api}/reviews/reports/${reportId}/generate`, { headers })
+  expect((await repeated.json()).data.currentRevisionId).toBe(saved.currentRevisionId)
+  const other = await request.post(`${api}/login`, { data: { account: "runtime-admin@example.invalid", password: "RuntimeAdmin2026Local" } })
+  const foreign = { Authorization: `Bearer ${(await other.json()).data.token}` }
+  expect((await request.get(`${api}/reviews/reports/${reportId}`, { headers: foreign })).status()).toBe(400)
+  expect((await request.get(`${api}/reviews/reports/${reportId}/revisions/${saved.currentRevisionId}/markdown`, { headers: foreign })).status()).toBe(400)
+  await page.goto(`/reviews/reports?input=${fixture.controlId}`)
+  await page.getByLabel("审查模型").selectOption(fixture.modelId)
+  await page.getByRole("button", { name: "新建并生成审查报告" }).click()
+  await expect(page.getByRole("heading", { name: "报告已保存", exact: true })).toBeVisible()
+  await expect(page.getByRole("heading", { name: "有源码证据的发现（结论待人工复核） · 0", exact: true })).toBeVisible()
+  await page.goto(`/reviews/reports?input=${fixture.failureId}`)
+  await page.getByLabel("审查模型").selectOption(fixture.modelId)
+  await page.getByRole("button", { name: "新建并生成审查报告" }).click()
+  await expect(page.getByRole("heading", { name: "审查失败", exact: true })).toBeVisible()
+  await page.reload()
+  await expect(page.getByRole("heading", { name: "审查失败", exact: true })).toBeVisible()
+  await expect(page.getByRole("alert", { name: "审查运行错误" })).toContainText("未保存成功报告")
+  const auditResponse = await request.get("http://127.0.0.1:18857/calls")
+  const calls = await auditResponse.json() as { action: string; method?: string; sha?: string }[]
+  expect(calls.length).toBeGreaterThan(0)
+  expect(calls.every(call => ["verifyCredential", "listTools", "pull_request_read", "get_file_contents"].includes(call.action))).toBe(true)
+  expect(calls.filter(call => call.action === "pull_request_read").every(call => ["get", "get_files"].includes(call.method || ""))).toBe(true)
+  expect(calls.filter(call => call.action === "get_file_contents").every(call => ["a", "b", "c", "d"].map(value => value.repeat(40)).includes(call.sha || ""))).toBe(true)
+  expect(errors).toEqual([])
+})

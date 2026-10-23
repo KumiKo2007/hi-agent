@@ -156,7 +156,7 @@ public class RagVersionDomainService {
             versionFile.setFileSize(originalFile.getSize());
             versionFile.setFilePageSize(originalFile.getFilePageSize());
             versionFile.setFileType(originalFile.getExt());
-            versionFile.setFilePath(originalFile.getPath());
+            versionFile.setFilePath(originalFile.getUrl());
             versionFile.setProcessStatus(originalFile.getIsInitialize());
             versionFile.setEmbeddingStatus(originalFile.getIsEmbedding());
             ragVersionFileRepository.insert(versionFile);
@@ -182,8 +182,12 @@ public class RagVersionDomainService {
             versionDoc.setRagVersionId(ragVersionId);
             versionDoc.setRagVersionFileId(ragVersionFileId);
             versionDoc.setOriginalDocumentId(doc.getId());
-            versionDoc.setContent(doc.getContent());
+            // 失败页保留页位和覆盖警告；版本表正文非空约束用空串表示缺文，不补造文字。
+            versionDoc.setContent(doc.getContent() == null ? "" : doc.getContent());
             versionDoc.setPage(doc.getPage());
+            versionDoc.setSourceLocatorType(doc.getSourceLocatorType());
+            versionDoc.setSourceLocator(doc.getSourceLocator());
+            versionDoc.setCoverageWarnings(doc.getCoverageWarnings());
             // vectorId 将在向量复制时设置
             ragVersionDocumentRepository.insert(versionDoc);
         }

@@ -10,6 +10,12 @@ import org.xhy.infrastructure.mq.core.MessageEnvelope;
 import org.xhy.infrastructure.mq.core.MessagePublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xhy.application.rag.assembler.FileDetailAssembler;
@@ -68,13 +74,15 @@ public class RagQaDatasetAppService {
     private final RagDataAccessDomainService ragDataAccessService;
 
     private final UserModelConfigResolver userModelConfigResolver;
+    private final TransactionTemplate committedFileUpdate;
 
     public RagQaDatasetAppService(RagQaDatasetDomainService ragQaDatasetDomainService,
             FileDetailDomainService fileDetailDomainService, DocumentUnitDomainService documentUnitDomainService,
             MessagePublisher messagePublisher, EmbeddingDomainService embeddingDomainService,
             RagPublishAppService ragPublishAppService, RagVersionDomainService ragVersionDomainService,
             UserRagDomainService userRagDomainService, RagDataAccessDomainService ragDataAccessService,
-            UserModelConfigResolver userModelConfigResolver) {
+            UserModelConfigResolver userModelConfigResolver,
+            @Qualifier("transactionManager") PlatformTransactionManager transactionManager) {
         this.ragQaDatasetDomainService = ragQaDatasetDomainService;
         this.fileDetailDomainService = fileDetailDomainService;
         this.documentUnitDomainService = documentUnitDomainService;
@@ -85,6 +93,8 @@ public class RagQaDatasetAppService {
         this.userRagDomainService = userRagDomainService;
         this.ragDataAccessService = ragDataAccessService;
         this.userModelConfigResolver = userModelConfigResolver;
+        this.committedFileUpdate = new TransactionTemplate(transactionManager);
+        this.committedFileUpdate.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
     }
 
     /** 创建数据集
@@ -403,13 +413,33 @@ public class RagQaDatasetAppService {
             ocrMessage.setPageSize(fileEntity.getFilePageSize());
             ocrMessage.setUserId(userId);
             // 获取用户的OCR模型配置并设置到消息中
-            ocrMessage.setOcrModelConfig(userModelConfigResolver.getUserOcrModelConfig(userId));
+            if ("pdf".equalsIgnoreCase(fileEntity.getExt())) {
+                ocrMessage.setOcrModelConfig(userModelConfigResolver.getUserOcrModelConfig(userId));
+            }
 
             MessageEnvelope<RagDocMessage> envelope = MessageEnvelope.builder(ocrMessage)
                     .addEventType(EventType.DOC_REFRESH_ORG).description("文件自动预处理任务").build();
-            messagePublisher.publish(RagDocSyncOcrEvent.route(), envelope);
-
-            log.info("Auto-preprocessing started for file: {}", fileId);
+            if (TransactionSynchronizationManager.isActualTransactionActive()
+                    && TransactionSynchronizationManager.isSynchronizationActive()) {
+                // 先提交文件及待处理状态，消费者才能立即读取到文件；回滚不会发送消息。
+                TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        try {
+                            messagePublisher.publish(RagDocSyncOcrEvent.route(), envelope);
+                            log.info("文件预处理消息已在事务提交后发送：{}", fileId);
+                        } catch (Exception error) {
+                            log.error("文件提交后发送预处理消息失败：{}", fileId, error);
+                            // afterCommit 的原事务资源仍绑定，失败状态必须独立提交。
+                            committedFileUpdate.executeWithoutResult(
+                                    status -> fileDetailDomainService.failFilePreprocessingStart(fileId, userId));
+                        }
+                    }
+                });
+            } else {
+                messagePublisher.publish(RagDocSyncOcrEvent.route(), envelope);
+                log.info("文件预处理消息已发送：{}", fileId);
+            }
 
         } catch (Exception e) {
             log.error("Failed to auto-start preprocessing for file: {}", fileId, e);
@@ -490,7 +520,9 @@ public class RagQaDatasetAppService {
             ocrMessage.setFileId(request.getFileId());
             ocrMessage.setPageSize(fileEntity.getFilePageSize());
             ocrMessage.setUserId(userId);
-            ocrMessage.setOcrModelConfig(userModelConfigResolver.getUserOcrModelConfig(userId));
+            if ("pdf".equalsIgnoreCase(fileEntity.getExt())) {
+                ocrMessage.setOcrModelConfig(userModelConfigResolver.getUserOcrModelConfig(userId));
+            }
 
             MessageEnvelope<RagDocMessage> envelope = MessageEnvelope.builder(ocrMessage)
                     .addEventType(EventType.DOC_REFRESH_ORG).description("文件OCR预处理任务").build();
@@ -597,7 +629,9 @@ public class RagQaDatasetAppService {
             ocrMessage.setFileId(request.getFileId());
             ocrMessage.setPageSize(fileEntity.getFilePageSize());
             ocrMessage.setUserId(userId);
-            ocrMessage.setOcrModelConfig(userModelConfigResolver.getUserOcrModelConfig(userId));
+            if ("pdf".equalsIgnoreCase(fileEntity.getExt())) {
+                ocrMessage.setOcrModelConfig(userModelConfigResolver.getUserOcrModelConfig(userId));
+            }
 
             MessageEnvelope<RagDocMessage> envelope = MessageEnvelope.builder(ocrMessage)
                     .addEventType(EventType.DOC_REFRESH_ORG).description("文件强制重新OCR预处理任务").build();

@@ -32,6 +32,32 @@ public class RagVersionDocumentDTO {
     /** 创建时间 */
     private LocalDateTime createdAt;
 
+    /** 来源位置类型；历史数据为空时不得猜测原文位置。 */
+    private String sourceLocatorType;
+    /** 原文定位 JSON，Word 包含从 1 开始的 paragraphIndex 和 heading。 */
+    private String sourceLocator;
+    /** 导入覆盖不足的中文提示 JSON 数组。 */
+    private String coverageWarnings;
+
+    public String getSourceLocatorType() {
+        return sourceLocatorType;
+    }
+    public void setSourceLocatorType(String value) {
+        sourceLocatorType = value;
+    }
+    public String getSourceLocator() {
+        return sourceLocator;
+    }
+    public void setSourceLocator(String value) {
+        sourceLocator = value;
+    }
+    public String getCoverageWarnings() {
+        return coverageWarnings;
+    }
+    public void setCoverageWarnings(String value) {
+        coverageWarnings = value;
+    }
+
     public String getId() {
         return id;
     }

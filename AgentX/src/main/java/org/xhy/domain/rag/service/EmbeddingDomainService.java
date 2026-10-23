@@ -212,6 +212,15 @@ public class EmbeddingDomainService implements MetadataConstant {
         final String vectorId = ragDocSyncStorageMessage.getId();
         final FileDetailEntity fileDetailEntity = fileDetailRepository.selectById(ragDocSyncStorageMessage.getFileId());
 
+        String sourceId = extractOriginalDocId(vectorId);
+        var storedSource = documentUnitRepository.selectById(sourceId);
+        if (storedSource == null
+                || !java.util.Objects.equals(storedSource.getFileId(), ragDocSyncStorageMessage.getFileId()))
+            throw new BusinessException("向量化来源不存在或不属于该文件");
+        if (Boolean.TRUE.equals(storedSource.getIsVector()) && vectorId.equals(sourceId)) {
+            log.info("来源{}已完成向量化，跳过重复投递", sourceId);
+            return;
+        }
         // 使用消息中的翻译后内容，而不是从数据库读取原文
         final String content = ragDocSyncStorageMessage.getContent();
 
@@ -228,7 +237,9 @@ public class EmbeddingDomainService implements MetadataConstant {
         OpenAiEmbeddingModel embeddingModel = createEmbeddingModelFromMessage(ragDocSyncStorageMessage);
         Embedding embeddings = embeddingModel.embed(textSegment).content();
 
-        embeddingStore.add(embeddings, textSegment);
+        embeddingStore.addAll(List.of(java.util.UUID
+                .nameUUIDFromBytes(vectorId.getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString()),
+                List.of(embeddings), List.of(textSegment));
 
         // 提取原始DocumentUnit ID（移除segment后缀）
         String originalDocId = extractOriginalDocId(vectorId);
@@ -239,21 +250,7 @@ public class EmbeddingDomainService implements MetadataConstant {
                     .eq(DocumentUnitEntity::getId, originalDocId).set(DocumentUnitEntity::getIsVector, true));
         }
 
-        // 修改文件状态
-        final Integer pageSize = fileDetailEntity.getFilePageSize();
-
-        final Long isVector = documentUnitRepository.selectCount(Wrappers.lambdaQuery(DocumentUnitEntity.class)
-                .eq(DocumentUnitEntity::getFileId, ragDocSyncStorageMessage.getFileId())
-                .eq(DocumentUnitEntity::getIsVector, true));
-
-        final Integer anInt = Convert.toInt(isVector);
-
-        if (anInt >= pageSize) {
-            // 使用状态机设置完成状态
-            fileDetailRepository.update(
-                    Wrappers.lambdaUpdate(FileDetailEntity.class).eq(FileDetailEntity::getId, fileDetailEntity.getId())
-                            .set(FileDetailEntity::getProcessingStatus, FileProcessingStatusEnum.COMPLETED.getCode()));
-        }
+        // 文件完成状态由消费端按实际可用来源计数统一推进；缺失页仍保留在原文和快照。
 
     }
 

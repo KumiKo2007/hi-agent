@@ -37,7 +37,7 @@ import com.rabbitmq.client.Channel;
 /** @author shilong.zang
  * @date 20:51 <br/>
  */
-@RabbitListener(bindings = @QueueBinding(value = @Queue(RagDocSyncStorageEvent.QUEUE_NAME), exchange = @Exchange(value = RagDocSyncStorageEvent.EXCHANGE_NAME, type = ExchangeTypes.TOPIC), key = RagDocSyncStorageEvent.ROUTE_KEY))
+@RabbitListener(ackMode = "MANUAL", bindings = @QueueBinding(value = @Queue(RagDocSyncStorageEvent.QUEUE_NAME), exchange = @Exchange(value = RagDocSyncStorageEvent.EXCHANGE_NAME, type = ExchangeTypes.TOPIC), key = RagDocSyncStorageEvent.ROUTE_KEY))
 @Component
 public class RagDocStorageConsumer {
 
@@ -108,16 +108,19 @@ public class RagDocStorageConsumer {
 
             // 获取文件总页数来计算进度
             var fileEntity = fileDetailDomainService.getFileByIdWithoutUserCheck(fileId);
-            Integer totalPages = fileEntity.getFilePageSize();
+            Long totalPages = documentUnitRepository.selectCount(Wrappers.<DocumentUnitEntity>lambdaQuery()
+                    .eq(DocumentUnitEntity::getFileId, fileId).eq(DocumentUnitEntity::getIsOcr, true)
+                    .isNotNull(DocumentUnitEntity::getContent).apply("content ~ '[^[:space:]]'"));
 
             if (totalPages != null && totalPages > 0) {
                 // 查询已完成向量化的页面数量
-                long completedVectorPages = documentUnitRepository
-                        .selectCount(Wrappers.<DocumentUnitEntity>lambdaQuery()
-                                .eq(DocumentUnitEntity::getFileId, fileId).eq(DocumentUnitEntity::getIsVector, true));
+                long completedVectorPages = documentUnitRepository.selectCount(
+                        Wrappers.<DocumentUnitEntity>lambdaQuery().eq(DocumentUnitEntity::getFileId, fileId)
+                                .eq(DocumentUnitEntity::getIsVector, true).eq(DocumentUnitEntity::getIsOcr, true)
+                                .isNotNull(DocumentUnitEntity::getContent).apply("content ~ '[^[:space:]]'"));
 
                 // 当前页面完成后的总完成页数
-                int currentCompletedPages = (int) (completedVectorPages + 1);
+                int currentCompletedPages = Math.toIntExact(completedVectorPages);
 
                 // 计算百分比：已完成的页数 / 总页数 * 100
                 double progress = ((double) currentCompletedPages / totalPages) * 100.0;
@@ -129,7 +132,7 @@ public class RagDocStorageConsumer {
                 // 检查是否所有页面都已完成向量化
                 if (currentCompletedPages >= totalPages) {
                     // 确保进度为100%
-                    fileDetailDomainService.updateFileEmbeddingProgress(fileId, totalPages, 100.0);
+                    fileDetailDomainService.updateFileEmbeddingProgress(fileId, Math.toIntExact(totalPages), 100.0);
                     // 通过状态机完成向量化处理
                     fileDetailDomainService.completeFileEmbeddingProcessing(fileId, fileEntity.getUserId());
                     log.info("文件{}的所有页面均已向量化，标记为完成", fileId);

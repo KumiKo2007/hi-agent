@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { Bot, Database, FileText, LogOut, Menu, Settings } from "lucide-react"
+import { Bot, Database, FileText, GitPullRequest, LogOut, Menu, Settings } from "lucide-react"
 import { toast } from "@/hooks/use-toast"
 
 import { cn } from "@/lib/utils"
@@ -17,12 +17,14 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
+import { Sheet, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { deleteCookie } from "@/lib/utils"
 import { getUserInfoWithToast, type UserInfo } from "@/lib/user-service"
 import { BrandMark } from "@/components/brand-mark"
 
 const navItems = [
+  { name: "教学准备", href: "/teaching", icon: FileText },
+  { name: "代码审查", href: "/reviews", icon: GitPullRequest },
   {
     name: "工作区",
     href: "/workspace",
@@ -104,10 +106,12 @@ export function NavigationBar() {
           <SheetTrigger asChild>
             <Button variant="ghost" size="icon" className="mr-2 md:hidden">
               <Menu className="h-5 w-5" />
-              <span className="sr-only">Toggle Menu</span>
+              <span className="sr-only">打开导航菜单</span>
             </Button>
           </SheetTrigger>
           <SheetContent side="left" className="pr-0">
+            <SheetTitle className="sr-only">导航菜单</SheetTitle>
+            <SheetDescription className="sr-only">选择你要打开的工作页面。</SheetDescription>
             <div className="px-7">
               <Link href="/" className="flex items-center" onClick={() => setOpen(false)}>
                 <BrandMark />
@@ -134,8 +138,8 @@ export function NavigationBar() {
         <Link href="/" className="mr-6 flex items-center space-x-2">
           <BrandMark />
         </Link>
-        <div className="flex flex-1 items-center justify-between">
-          <nav className="flex items-center space-x-6">
+        <div className="flex flex-1 items-center justify-end md:justify-between">
+          <nav className="hidden items-center space-x-6 md:flex">
             {navItems.map((item) => (
               <Link
                 key={item.href}

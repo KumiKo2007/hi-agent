@@ -35,6 +35,128 @@ jobs:
           if-no-files-found: ignore
           retention-days: 30
 
+  run-persistence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: pgvector/pgvector:pg15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: agentx_test
+        ports:
+          - 55432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d agentx_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+      rabbitmq:
+        image: rabbitmq:3.12-management-alpine
+        ports:
+          - 55672:5672
+        options: >-
+          --health-cmd "rabbitmq-diagnostics -q ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+      - name: Initialize the fresh deployment schema
+        run: |
+          docker exec -i ${{ job.services.postgres.id }} psql -U postgres -d agentx_test -v ON_ERROR_STOP=1 -q < docs/sql/01_init.sql
+          docker exec ${{ job.services.postgres.id }} psql -U postgres -d agentx_test -v ON_ERROR_STOP=1 -c "SELECT t.transport_type, v.transport_type, u.transport_type, p.classification, a.action_name, g.action_name FROM tools t, tool_versions v, user_tools u, tool_action_policies p, agent_tool_actions a, agent_tool_action_preauthorizations g LIMIT 0"
+      - name: Verify recovery and duplicate dispatch through PostgreSQL and RabbitMQ
+        working-directory: AgentX
+        env:
+          RUN_DELIVERY_INTEGRATION: 'true'
+          RUN_TEST_DB_URL: jdbc:postgresql://localhost:55432/agentx_test
+          RUN_TEST_RABBIT_PORT: '55672'
+        run: ./mvnw -B -ntp -Dtest=RunPostgresRabbitIntegrationTest,RunMigrationSequenceTest -DforkedProcessTimeoutInSeconds=60 test
+      - name: Upload persistence test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: run-persistence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: AgentX/target/surefire-reports/
+          if-no-files-found: error
+          retention-days: 14
+
+  teaching-pr-http:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: pgvector/pgvector:pg15
+        env:
+          POSTGRES_USER: postgres
+          # 仅限此临时 CI 服务，与测试 fixture 的非生产凭据一致。
+          POSTGRES_PASSWORD: teaching-test
+          POSTGRES_DB: teaching_test
+        ports:
+          - 55425:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d teaching_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+      - name: Verify teaching and PR HTTP behavior through real PostgreSQL
+        working-directory: AgentX
+        env:
+          TEACHING_INTEGRATION: 'true'
+          TEACHING_TEST_URL: jdbc:postgresql://localhost:55425/teaching_test
+          PR_INPUT_POSTGRES_URL: jdbc:postgresql://localhost:55425/teaching_test
+          PR_INPUT_POSTGRES_USER: postgres
+          PR_INPUT_POSTGRES_PASSWORD: teaching-test
+        run: ./mvnw -B -ntp -Dtest=TeachingSelectionHttpTest,WordSourceHttpTest,TeachingOutlineHttpTest,TeachingLessonHttpTest,TeachingOcrHttpTest,ScannedPdfSourceHttpTest,PrReviewHttpTest,PrInputHttpTest,PrInputPostgresHttpIntegrationTest -DforkedProcessTimeoutInSeconds=120 test
+      - name: Reject missing, empty or skipped HTTP regression reports
+        working-directory: AgentX
+        run: |
+          python3 - <<'PYTHON'
+          import pathlib
+          import xml.etree.ElementTree as ET
+
+          expected = [
+              "org.xhy.interfaces.api.portal.teaching.TeachingSelectionHttpTest",
+              "org.xhy.interfaces.api.portal.teaching.WordSourceHttpTest",
+              "org.xhy.interfaces.api.portal.teaching.TeachingOutlineHttpTest",
+              "org.xhy.interfaces.api.portal.teaching.TeachingLessonHttpTest",
+              "org.xhy.interfaces.api.portal.teaching.TeachingOcrHttpTest",
+              "org.xhy.interfaces.api.portal.teaching.ScannedPdfSourceHttpTest",
+              "org.xhy.interfaces.api.portal.review.PrReviewHttpTest",
+              "org.xhy.interfaces.api.portal.review.PrInputHttpTest",
+              "org.xhy.interfaces.api.portal.review.PrInputPostgresHttpIntegrationTest",
+          ]
+          for name in expected:
+              path = pathlib.Path("target/surefire-reports") / f"TEST-{name}.xml"
+              report = ET.parse(path).getroot()
+              counts = {key: int(report.get(key, "0")) for key in ("tests", "failures", "errors", "skipped")}
+              if counts["tests"] <= 0 or any(counts[key] for key in ("failures", "errors", "skipped")):
+                  raise SystemExit(f"HTTP regression evidence invalid: {name}: {counts}")
+              print(f"Verified {name}: {counts}")
+          PYTHON
+      - name: Upload teaching and PR HTTP evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: teaching-pr-http-${{ github.run_id }}-${{ github.run_attempt }}
+          path: AgentX/target/surefire-reports/
+          if-no-files-found: error
+          retention-days: 14
+
   frontend:
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -71,3 +193,11 @@ jobs:
       - run: npm ci --legacy-peer-deps --include=optional
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
+      - name: Upload browser failure evidence
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-e2e-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .playwright-results/
+          if-no-files-found: warn
+          retention-days: 14
