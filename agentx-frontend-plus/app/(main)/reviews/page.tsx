@@ -101,9 +101,11 @@ export default function ReviewsPage() {
           {error && <p role="alert" aria-label="PR 输入错误" className="mt-4 rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">{error}</p>}
         </CardContent>
       </Card>
+      <Link href="/reviews/reports" className="inline-block text-sm text-primary underline">查看保存的审查报告</Link>
       {input && <section aria-label="固定 PR 输入" className="space-y-4">
         <Card><CardHeader><CardTitle className="text-xl">{input.title}</CardTitle><p className="text-sm text-muted-foreground">{input.repository} #{input.pullNumber} · {new Date(input.createdAt).toLocaleString("zh-CN")}</p></CardHeader>
           <CardContent className="space-y-4">
+            <Link href={`/reviews/reports?input=${encodeURIComponent(input.id)}`} className="inline-block rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground">为此固定输入生成 Bug 报告</Link>
             <div className="flex items-center gap-2 text-sm"><LockKeyhole className="h-4 w-4" />已固定输入，刷新页面可恢复此快照。</div>
             <dl className="grid gap-3 rounded-lg bg-muted/50 p-4 text-sm">
               <div><dt className="text-muted-foreground">基准提交（base）</dt><dd className="break-all font-mono">{input.baseSha}</dd></div>
